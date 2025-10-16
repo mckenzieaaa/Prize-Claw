@@ -986,11 +986,16 @@ const config = {
     backgroundColor: '#0a0a0f',
     scene: [MenuScene, GameScene],
     scale: {
-        mode: Phaser.Scale.FIT,  // Auto-scale for mobile
+        mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
-        parent: 'game-container',
         width: 700,
         height: 800
+    },
+    // Disable context menu on mobile
+    input: {
+        touch: {
+            capture: true
+        }
     }
 };
 
