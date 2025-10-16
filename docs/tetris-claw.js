@@ -435,13 +435,12 @@ class GameScene extends Phaser.Scene {
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(201);
 
-                // Instructions (bottom center)
+        // Instructions (bottom center)
         this.instructionText = this.add.text(350, 740, 'PC: WASD + SPACE  •  Mobile: Drag + Double Tap  •  Drop to LEFT EXIT', {
             fontSize: '13px',
             color: '#AABBCC',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(201);
-    }
     }
 
     createMenuButton() {
