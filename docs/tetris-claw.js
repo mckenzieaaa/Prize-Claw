@@ -62,9 +62,9 @@ class MenuScene extends Phaser.Scene {
 
         // How to play
         const instructions = [
-            'WASD - Move the claw',
+            'WASD - Move the claw anywhere',
             'SPACE - Grab/Release blocks',
-            'Drag to EXIT (top right)',
+            'Drop to LEFT EXIT box',
             'Clear before RED LINE!'
         ];
 
@@ -194,8 +194,8 @@ class GameScene extends Phaser.Scene {
     create() {
         const WIDTH = this.BLOCK_SIZE * this.GRID_WIDTH;
         const HEIGHT = this.BLOCK_SIZE * this.GRID_HEIGHT;
-        const OFFSET_X = 60;
-        const OFFSET_Y = 100;
+        const OFFSET_X = 200;  // Move game area to right
+        const OFFSET_Y = 120;   // More space at top
 
         this.offsetX = OFFSET_X;
         this.offsetY = OFFSET_Y;
@@ -221,6 +221,12 @@ class GameScene extends Phaser.Scene {
         // Red danger line
         const dangerY = OFFSET_Y + this.DANGER_LINE * this.BLOCK_SIZE;
         this.dangerLine = this.add.rectangle(OFFSET_X + WIDTH/2, dangerY, WIDTH, 3, 0xFF3366);
+        this.dangerLine.setDepth(20);
+        this.add.text(OFFSET_X - 80, dangerY, 'DANGER', {
+            fontSize: '14px',
+            color: '#FF3366',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(20);
         this.tweens.add({
             targets: this.dangerLine,
             alpha: 0.5,
@@ -229,12 +235,12 @@ class GameScene extends Phaser.Scene {
             repeat: -1
         });
 
-        // Exit box (inside game area, top right corner)
+        // Exit box (left side, easy to access)
         this.exitBox = {
-            x: OFFSET_X + WIDTH - 140,
-            y: OFFSET_Y + 10,
-            width: 130,
-            height: 120
+            x: 30,
+            y: OFFSET_Y + HEIGHT - 180,
+            width: 140,
+            height: 160
         };
         
         const exitBg = this.add.rectangle(
@@ -243,20 +249,27 @@ class GameScene extends Phaser.Scene {
             this.exitBox.width,
             this.exitBox.height,
             0x32C832,
-            0.25
+            0.3
         );
-        exitBg.setStrokeStyle(4, 0x32C832, 0.9);
+        exitBg.setStrokeStyle(5, 0x32C832, 0.95);
         exitBg.setDepth(5);
         
-        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + this.exitBox.height/2 - 10, 'EXIT', {
-            fontSize: '26px',
-            color: '#32C832',
-            fontStyle: 'bold'
+        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 40, 'EXIT', {
+            fontSize: '32px',
+            color: '#FFFFFF',
+            fontStyle: 'bold',
+            stroke: '#32C832',
+            strokeThickness: 3
         }).setOrigin(0.5).setDepth(6);
         
-        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + this.exitBox.height/2 + 20, '✓', {
-            fontSize: '32px',
+        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 90, '✓', {
+            fontSize: '48px',
             color: '#32C832'
+        }).setOrigin(0.5).setDepth(6);
+        
+        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 135, 'Drop Here', {
+            fontSize: '16px',
+            color: '#AABBCC'
         }).setOrigin(0.5).setDepth(6);
 
         // Game state
@@ -349,42 +362,61 @@ class GameScene extends Phaser.Scene {
     }
 
     createUI() {
-        // Score panel
-        const scorePanel = this.add.rectangle(30, 30, 180, 80, 0x1a1a2e, 0.8);
-        scorePanel.setStrokeStyle(2, 0x5e72e4, 0.6);
+        // Score panel (top left, larger)
+        const scorePanel = this.add.rectangle(30, 30, 220, 110, 0x1a1a2e, 0.85);
+        scorePanel.setStrokeStyle(3, 0x5e72e4, 0.8);
         scorePanel.setOrigin(0, 0);
         scorePanel.setDepth(200);
 
-        this.add.text(40, 45, 'SCORE', {
-            fontSize: '14px',
+        this.add.text(140, 50, 'SCORE', {
+            fontSize: '18px',
             color: '#8899AA',
             fontStyle: 'bold'
-        }).setDepth(201);
+        }).setOrigin(0.5).setDepth(201);
 
-        this.scoreText = this.add.text(40, 65, '0', {
-            fontSize: '28px',
+        this.scoreText = this.add.text(140, 90, '0', {
+            fontSize: '38px',
             color: '#FFFFFF',
             fontStyle: 'bold'
-        }).setDepth(201);
+        }).setOrigin(0.5).setDepth(201);
 
-        // Instructions
-        this.instructionText = this.add.text(350, 720, 'WASD: Move Claw  •  SPACE: Grab/Release  •  EXIT: Top Right ↗', {
-            fontSize: '14px',
-            color: '#AABBCC'
+        // Instructions (bottom center)
+        this.instructionText = this.add.text(350, 740, 'WASD: Move Claw  •  SPACE: Grab/Release  •  Drop to LEFT EXIT Box', {
+            fontSize: '15px',
+            color: '#AABBCC',
+            fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(201);
     }
 
     createMenuButton() {
-        const btn = this.add.rectangle(640, 30, 100, 40, 0x5E72E4, 0.8);
-        btn.setStrokeStyle(2, 0x8899FF);
+        const btn = this.add.rectangle(620, 50, 120, 50, 0x5E72E4, 0.85);
+        btn.setStrokeStyle(3, 0x8899FF);
         btn.setInteractive();
         btn.setDepth(200);
 
-        const label = this.add.text(640, 30, 'MENU', {
-            fontSize: '16px',
+        const label = this.add.text(620, 50, 'MENU', {
+            fontSize: '20px',
             color: '#FFF',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(201);
+
+        btn.on('pointerover', () => {
+            this.tweens.add({
+                targets: btn,
+                scaleX: 1.05,
+                scaleY: 1.05,
+                duration: 150
+            });
+        });
+
+        btn.on('pointerout', () => {
+            this.tweens.add({
+                targets: btn,
+                scaleX: 1,
+                scaleY: 1,
+                duration: 150
+            });
+        });
 
         btn.on('pointerdown', () => {
             this.showPauseMenu();
