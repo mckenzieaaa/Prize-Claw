@@ -64,7 +64,7 @@ class MenuScene extends Phaser.Scene {
         const instructions = [
             'WASD - Move the claw',
             'SPACE - Grab/Release blocks',
-            'Drag pieces to EXIT box',
+            'Drag to EXIT (top right)',
             'Clear before RED LINE!'
         ];
 
@@ -229,12 +229,12 @@ class GameScene extends Phaser.Scene {
             repeat: -1
         });
 
-        // Exit box (right side, larger and easier to access)
+        // Exit box (inside game area, top right corner)
         this.exitBox = {
-            x: OFFSET_X + WIDTH + 20,
-            y: OFFSET_Y + HEIGHT - 200,
-            width: 140,
-            height: 180
+            x: OFFSET_X + WIDTH - 140,
+            y: OFFSET_Y + 10,
+            width: 130,
+            height: 120
         };
         
         const exitBg = this.add.rectangle(
@@ -243,20 +243,21 @@ class GameScene extends Phaser.Scene {
             this.exitBox.width,
             this.exitBox.height,
             0x32C832,
-            0.3
+            0.25
         );
         exitBg.setStrokeStyle(4, 0x32C832, 0.9);
+        exitBg.setDepth(5);
         
-        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 30, 'EXIT', {
-            fontSize: '28px',
+        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + this.exitBox.height/2 - 10, 'EXIT', {
+            fontSize: '26px',
             color: '#32C832',
             fontStyle: 'bold'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setDepth(6);
         
-        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + this.exitBox.height - 30, '↓', {
-            fontSize: '40px',
+        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + this.exitBox.height/2 + 20, '✓', {
+            fontSize: '32px',
             color: '#32C832'
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setDepth(6);
 
         // Game state
         this.gridData = Array(this.GRID_HEIGHT).fill().map(() => Array(this.GRID_WIDTH).fill(null));
@@ -334,12 +335,12 @@ class GameScene extends Phaser.Scene {
         this.clawSprite = this.add.image(0, 0, 'claw_texture');
         this.claw.add(this.clawSprite);
 
-        // Claw bounds
+        // Claw bounds - expand to full game area
         this.clawBounds = {
-            minX: this.offsetX + 20,
-            maxX: this.offsetX + WIDTH - 20,
-            minY: this.offsetY + 40,
-            maxY: this.offsetY + HEIGHT - 40
+            minX: this.offsetX + 15,
+            maxX: this.offsetX + WIDTH - 15,
+            minY: this.offsetY + 15,
+            maxY: this.offsetY + HEIGHT - 15
         };
 
         // Claw grab zone (collision area)
@@ -367,7 +368,7 @@ class GameScene extends Phaser.Scene {
         }).setDepth(201);
 
         // Instructions
-        this.instructionText = this.add.text(350, 720, 'WASD: Move Claw  •  SPACE: Grab/Release  •  Drag to EXIT', {
+        this.instructionText = this.add.text(350, 720, 'WASD: Move Claw  •  SPACE: Grab/Release  •  EXIT: Top Right ↗', {
             fontSize: '14px',
             color: '#AABBCC'
         }).setOrigin(0.5).setDepth(201);
