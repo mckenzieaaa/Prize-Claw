@@ -229,12 +229,12 @@ class GameScene extends Phaser.Scene {
             repeat: -1
         });
 
-        // Exit box (right side)
+        // Exit box (right side, larger and easier to access)
         this.exitBox = {
-            x: OFFSET_X + WIDTH + 40,
-            y: OFFSET_Y + 100,
-            width: 120,
-            height: 140
+            x: OFFSET_X + WIDTH + 20,
+            y: OFFSET_Y + HEIGHT - 200,
+            width: 140,
+            height: 180
         };
         
         const exitBg = this.add.rectangle(
@@ -245,12 +245,17 @@ class GameScene extends Phaser.Scene {
             0x32C832,
             0.3
         );
-        exitBg.setStrokeStyle(3, 0x32C832, 0.8);
+        exitBg.setStrokeStyle(4, 0x32C832, 0.9);
         
-        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + this.exitBox.height/2, 'EXIT', {
-            fontSize: '24px',
+        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 30, 'EXIT', {
+            fontSize: '28px',
             color: '#32C832',
             fontStyle: 'bold'
+        }).setOrigin(0.5);
+        
+        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + this.exitBox.height - 30, '↓', {
+            fontSize: '40px',
+            color: '#32C832'
         }).setOrigin(0.5);
 
         // Game state
@@ -466,9 +471,20 @@ class GameScene extends Phaser.Scene {
         const shapeKey = Phaser.Utils.Array.GetRandom(shapes);
         const shape = TETROMINO_SHAPES[shapeKey];
         
-        // Random position at bottom
+        // Random horizontal position
         const startCol = Phaser.Math.Between(1, this.GRID_WIDTH - 5);
-        const startRow = this.GRID_HEIGHT - 1;
+        
+        // Find highest occupied position in this column range to stack on top
+        let highestRow = this.GRID_HEIGHT - 1;
+        for (let col = startCol; col < startCol + 4; col++) {
+            if (col >= this.GRID_WIDTH) break;
+            for (let row = 0; row < this.GRID_HEIGHT; row++) {
+                if (this.gridData[row][col] !== null) {
+                    highestRow = Math.min(highestRow, row - 1);
+                    break;
+                }
+            }
+        }
 
         const tetromino = {
             type: shapeKey,
@@ -477,13 +493,6 @@ class GameScene extends Phaser.Scene {
             grabbed: false,
             container: null
         };
-
-        // Create a container to hold the entire tetromino shape
-        const centerX = this.offsetX + (startCol + 1.5) * this.BLOCK_SIZE;
-        const centerY = this.offsetY + (startRow - 0.5) * this.BLOCK_SIZE;
-        
-        tetromino.container = this.add.container(centerX, centerY);
-        tetromino.container.setDepth(10);
 
         // Calculate bounds for centering
         let minX = 999, maxX = -999, minY = 999, maxY = -999;
@@ -497,10 +506,17 @@ class GameScene extends Phaser.Scene {
         const offsetBx = (minX + maxX) / 2;
         const offsetBy = (minY + maxY) / 2;
 
+        // Create a container to hold the entire tetromino shape
+        const centerX = this.offsetX + (startCol + 1.5) * this.BLOCK_SIZE;
+        const centerY = this.offsetY + (highestRow - offsetBy) * this.BLOCK_SIZE;
+        
+        tetromino.container = this.add.container(centerX, centerY);
+        tetromino.container.setDepth(10);
+
         // Create blocks relative to container
         shape.blocks.forEach(([bx, by]) => {
             const gridX = startCol + bx;
-            const gridY = startRow - by;
+            const gridY = highestRow - by;
             
             if (gridX >= 0 && gridX < this.GRID_WIDTH && gridY >= 0 && gridY < this.GRID_HEIGHT) {
                 const block = this.add.image(
@@ -514,6 +530,15 @@ class GameScene extends Phaser.Scene {
                 tetromino.gridPositions.push({ x: gridX, y: gridY });
                 this.gridData[gridY][gridX] = tetromino;
             }
+        });
+
+        // Spawn animation - fall from above
+        tetromino.container.y -= 100;
+        this.tweens.add({
+            targets: tetromino.container,
+            y: centerY,
+            duration: 400,
+            ease: 'Bounce.easeOut'
         });
 
         this.tetrominoes.push(tetromino);
@@ -746,14 +771,16 @@ class GameScene extends Phaser.Scene {
     checkExitBox() {
         if (!this.grabbedPiece) return;
 
-        // Check if container center is inside exit box
+        // Check if any part of the piece is inside exit box (more lenient)
         const containerX = this.grabbedPiece.container.x;
         const containerY = this.grabbedPiece.container.y;
         
-        const inBox = containerX >= this.exitBox.x &&
-                      containerX <= this.exitBox.x + this.exitBox.width &&
-                      containerY >= this.exitBox.y &&
-                      containerY <= this.exitBox.y + this.exitBox.height;
+        // Expanded check area
+        const margin = 30;
+        const inBox = containerX >= this.exitBox.x - margin &&
+                      containerX <= this.exitBox.x + this.exitBox.width + margin &&
+                      containerY >= this.exitBox.y - margin &&
+                      containerY <= this.exitBox.y + this.exitBox.height + margin;
 
         if (inBox) {
             this.deliverPiece();
