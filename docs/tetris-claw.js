@@ -62,8 +62,8 @@ class MenuScene extends Phaser.Scene {
 
         // How to play
         const instructions = [
-            'WASD - Move the claw anywhere',
-            'SPACE - Grab/Release blocks',
+            'PC: WASD + SPACE to grab',
+            'Mobile: Drag + Double Tap to grab',
             'Drop to LEFT EXIT box',
             'Clear before RED LINE!'
         ];
@@ -304,13 +304,30 @@ class GameScene extends Phaser.Scene {
         this.isDragging = false;
         this.dragStartX = 0;
         this.dragStartY = 0;
+        this.lastTapTime = 0;
+        this.doubleTapDelay = 300; // ms for double tap detection
         
         // Make game area interactive for touch
         this.input.on('pointerdown', (pointer) => {
             if (!this.gameOver) {
-                this.isDragging = true;
-                this.dragStartX = pointer.x;
-                this.dragStartY = pointer.y;
+                const currentTime = this.time.now;
+                
+                // Check for double tap
+                if (currentTime - this.lastTapTime < this.doubleTapDelay) {
+                    // Double tap detected - grab/release
+                    if (this.grabbedPiece) {
+                        this.releasePiece();
+                    } else {
+                        this.tryGrabAtClaw();
+                    }
+                    this.lastTapTime = 0; // Reset to prevent triple tap
+                } else {
+                    // Single tap - start dragging
+                    this.lastTapTime = currentTime;
+                    this.isDragging = true;
+                    this.dragStartX = pointer.x;
+                    this.dragStartY = pointer.y;
+                }
             }
         });
 
@@ -418,12 +435,13 @@ class GameScene extends Phaser.Scene {
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(201);
 
-        // Instructions (bottom center)
-        this.instructionText = this.add.text(350, 740, 'WASD: Move Claw  •  SPACE: Grab/Release  •  Drop to LEFT EXIT Box', {
-            fontSize: '15px',
+                // Instructions (bottom center)
+        this.instructionText = this.add.text(350, 740, 'PC: WASD + SPACE  •  Mobile: Drag + Double Tap  •  Drop to LEFT EXIT', {
+            fontSize: '13px',
             color: '#AABBCC',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(201);
+    }
     }
 
     createMenuButton() {
@@ -690,17 +708,6 @@ class GameScene extends Phaser.Scene {
         // Check if in exit box
         if (this.grabbedPiece) {
             this.checkExitBox();
-        }
-        
-        // Update mobile button state
-        if (this.mobileGrabBtn && this.mobileGrabLabel) {
-            if (this.grabbedPiece) {
-                this.mobileGrabLabel.setText('DROP');
-                this.mobileGrabBtn.setFillStyle(0x6600FF, 0.85);
-            } else {
-                this.mobileGrabLabel.setText('GRAB');
-                this.mobileGrabBtn.setFillStyle(0xFF6600, 0.85);
-            }
         }
     }
 
