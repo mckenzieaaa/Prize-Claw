@@ -348,9 +348,9 @@ class GameScene extends Phaser.Scene {
         this.clawSprite = this.add.image(0, 0, 'claw_texture');
         this.claw.add(this.clawSprite);
 
-        // Claw bounds - expand to full game area
+        // Claw bounds - expand to include EXIT box on the left
         this.clawBounds = {
-            minX: this.offsetX + 15,
+            minX: 50,  // Allow claw to reach left EXIT box
             maxX: this.offsetX + WIDTH - 15,
             minY: this.offsetY + 15,
             maxY: this.offsetY + HEIGHT - 15
