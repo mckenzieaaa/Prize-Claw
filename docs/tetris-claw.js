@@ -937,7 +937,7 @@ const config = {
     backgroundColor: '#0a0a0f',
     scene: [MenuScene, GameScene],
     scale: {
-        mode: Phaser.Scale.FIT,
+        mode: Phaser.Scale.NONE,  // Don't auto-scale
         autoCenter: Phaser.Scale.CENTER_BOTH
     }
 };
