@@ -25,39 +25,69 @@ class GameScene extends Phaser.Scene {
     }
 
     createBlockTextures() {
-        // Create modern frosted glass blocks for each Tetromino type
+        // Create modern frosted glass blocks for each Tetromino type with enhanced 3D effect
         Object.entries(TETROMINO_SHAPES).forEach(([key, data]) => {
             const graphics = this.add.graphics();
             const size = this.BLOCK_SIZE;
             
-            // Main block with gradient
+            // Shadow/depth layer
+            graphics.fillStyle(0x000000, 0.3);
+            graphics.fillRoundedRect(4, 6, size-4, size-4, 8);
+            
+            // Main block with enhanced gradient for depth
+            const color = Phaser.Display.Color.ValueToColor(data.color);
             graphics.fillGradientStyle(
-                Phaser.Display.Color.ValueToColor(data.color).lighten(20).color,
-                Phaser.Display.Color.ValueToColor(data.color).lighten(20).color,
-                Phaser.Display.Color.ValueToColor(data.color).darken(10).color,
-                Phaser.Display.Color.ValueToColor(data.color).darken(10).color,
-                0.9
+                color.lighten(30).color,
+                color.lighten(20).color,
+                color.darken(5).color,
+                color.darken(15).color,
+                0.95
             );
             graphics.fillRoundedRect(2, 2, size-4, size-4, 8);
             
-            // Frosted glass overlay
-            graphics.fillStyle(0xFFFFFF, 0.2);
-            graphics.fillRoundedRect(2, 2, size-4, size/2, 8);
+            // Glossy top layer (frosted glass effect)
+            graphics.fillStyle(0xFFFFFF, 0.25);
+            graphics.fillRoundedRect(2, 2, size-4, size/2.5, 8);
             
-            // Glossy highlight
-            graphics.fillStyle(0xFFFFFF, 0.4);
-            graphics.fillRoundedRect(8, 8, size-20, 8, 4);
+            // Sharp highlight
+            graphics.fillStyle(0xFFFFFF, 0.5);
+            graphics.fillRoundedRect(6, 6, size-16, 6, 3);
             
-            // Border glow
-            graphics.lineStyle(2, Phaser.Display.Color.ValueToColor(data.color).lighten(30).color, 0.6);
+            // Inner glow
+            graphics.lineStyle(1, color.lighten(40).color, 0.4);
+            graphics.strokeRoundedRect(3, 3, size-6, size-6, 7);
+            
+            // Outer border with glow
+            graphics.lineStyle(2, color.lighten(35).color, 0.7);
             graphics.strokeRoundedRect(2, 2, size-4, size-4, 8);
+            
+            // Subtle bottom reflection
+            graphics.fillStyle(0xFFFFFF, 0.1);
+            graphics.fillRoundedRect(2, size-10, size-4, 8, 4);
             
             graphics.generateTexture(`block_${key}`, size, size);
             graphics.destroy();
         });
 
-        // Create claw texture
+        // Create claw texture with metallic effect
         this.createClawTexture();
+        
+        // Create particle texture
+        this.createParticleTexture();
+    }
+
+    createParticleTexture() {
+        const graphics = this.add.graphics();
+        
+        // Glowing particle
+        graphics.fillGradientStyle(0xFFFFFF, 0xFFFFFF, 0x5E72E4, 0x5E72E4, 1);
+        graphics.fillCircle(4, 4, 4);
+        
+        graphics.fillStyle(0xFFFFFF, 0.6);
+        graphics.fillCircle(4, 4, 2);
+        
+        graphics.generateTexture('particle', 8, 8);
+        graphics.destroy();
     }
 
     createClawTexture() {
@@ -95,28 +125,36 @@ class GameScene extends Phaser.Scene {
         const OFFSET_X = 60;
         const OFFSET_Y = 80;
 
-        // Dark modern background
-        this.add.rectangle(
-            OFFSET_X + WIDTH/2, 
-            OFFSET_Y + HEIGHT/2, 
-            WIDTH + OFFSET_X * 2, 
-            HEIGHT + OFFSET_Y * 2, 
-            0x1a1a2e
-        );
+        // Dark modern background with subtle gradient
+        const bgGradient = this.add.graphics();
+        bgGradient.fillGradientStyle(0x0f0f1a, 0x0f0f1a, 0x1a1a2e, 0x1a1a2e, 1);
+        bgGradient.fillRect(0, 0, WIDTH + OFFSET_X * 2, HEIGHT + OFFSET_Y * 2);
 
-        // Game area background with frosted effect
+        // Ambient floating particles
+        this.createAmbientParticles(WIDTH, HEIGHT, OFFSET_X, OFFSET_Y);
+
+        // Game area background with ultra-frosted effect
         const gameArea = this.add.rectangle(
             OFFSET_X + WIDTH/2,
             OFFSET_Y + HEIGHT/2,
             WIDTH,
             HEIGHT,
             0x0a0a1a,
-            0.6
+            0.5
         );
+        
+        // Add inner glow to game area
+        const innerGlow = this.add.graphics();
+        innerGlow.lineStyle(3, 0x5E72E4, 0.15);
+        innerGlow.strokeRect(OFFSET_X - 1, OFFSET_Y - 1, WIDTH + 2, HEIGHT + 2);
+        
+        // Outer glow
+        innerGlow.lineStyle(1, 0x5E72E4, 0.3);
+        innerGlow.strokeRect(OFFSET_X - 3, OFFSET_Y - 3, WIDTH + 6, HEIGHT + 6);
 
-        // Grid lines (subtle)
+        // Grid lines (more subtle and elegant)
         const gridGraphics = this.add.graphics();
-        gridGraphics.lineStyle(1, 0x2a2a3e, 0.3);
+        gridGraphics.lineStyle(1, 0x2a2a3e, 0.15);
         for (let x = 0; x <= this.GRID_WIDTH; x++) {
             gridGraphics.lineBetween(
                 OFFSET_X + x * this.BLOCK_SIZE,
@@ -221,6 +259,42 @@ class GameScene extends Phaser.Scene {
 
         // Spawn initial row
         this.spawnNewRow();
+    }
+
+    createAmbientParticles(WIDTH, HEIGHT, OFFSET_X, OFFSET_Y) {
+        // Create slowly floating ambient particles for atmosphere
+        for (let i = 0; i < 30; i++) {
+            const x = Phaser.Math.Between(OFFSET_X, OFFSET_X + WIDTH);
+            const y = Phaser.Math.Between(OFFSET_Y, OFFSET_Y + HEIGHT);
+            const size = Phaser.Math.Between(1, 3);
+            const particle = this.add.circle(x, y, size, 0x5E72E4, Phaser.Math.FloatBetween(0.1, 0.3));
+            particle.setDepth(5);
+            
+            // Slow floating animation
+            this.tweens.add({
+                targets: particle,
+                y: y - Phaser.Math.Between(100, 200),
+                x: x + Phaser.Math.Between(-50, 50),
+                alpha: 0,
+                duration: Phaser.Math.Between(5000, 10000),
+                ease: 'Sine.easeInOut',
+                onComplete: () => {
+                    // Respawn at bottom
+                    particle.y = OFFSET_Y + HEIGHT;
+                    particle.x = Phaser.Math.Between(OFFSET_X, OFFSET_X + WIDTH);
+                    particle.alpha = Phaser.Math.FloatBetween(0.1, 0.3);
+                    this.tweens.add({
+                        targets: particle,
+                        y: y - Phaser.Math.Between(100, 200),
+                        x: x + Phaser.Math.Between(-50, 50),
+                        alpha: 0,
+                        duration: Phaser.Math.Between(5000, 10000),
+                        ease: 'Sine.easeInOut',
+                        repeat: -1
+                    });
+                }
+            });
+        }
     }
 
     createModernUI(WIDTH, HEIGHT, OFFSET_X, OFFSET_Y) {
@@ -506,11 +580,17 @@ class GameScene extends Phaser.Scene {
 
     deliverBlocks() {
         this.claw.grabbedBlocks.forEach(block => {
+            // Create particle explosion effect
+            this.createParticleExplosion(block.x, block.y, block.getData('type'));
+            
+            // Animate block disappearance
             this.tweens.add({
                 targets: block,
                 alpha: 0,
                 scale: 0,
-                duration: 300,
+                angle: 360,
+                duration: 400,
+                ease: 'Back.easeIn',
                 onComplete: () => {
                     block.destroy();
                     this.blocks = this.blocks.filter(b => b !== block);
@@ -523,16 +603,89 @@ class GameScene extends Phaser.Scene {
         if (this.claw.grabbedBlocks.length > 0) {
             this.scoreValue.setText(this.score.toString());
             
+            // Flash effect on score
+            this.tweens.add({
+                targets: this.scoreValue,
+                scale: 1.3,
+                duration: 150,
+                yoyo: true,
+                ease: 'Cubic.easeOut'
+            });
+            
             // Level up every 100 points
             const newLevel = Math.floor(this.score / 100) + 1;
             if (newLevel > this.level) {
                 this.level = newLevel;
                 this.levelText.setText('L' + this.level);
                 this.spawnInterval = Math.max(2000, 4000 - (this.level - 1) * 300);
+                
+                // Level up particle burst
+                this.createLevelUpEffect();
             }
         }
 
         this.claw.grabbedBlocks = [];
+    }
+
+    createParticleExplosion(x, y, blockType) {
+        const color = TETROMINO_SHAPES[blockType].color;
+        
+        // Create 20-30 particles
+        for (let i = 0; i < Phaser.Math.Between(20, 30); i++) {
+            const angle = (Math.PI * 2 * i) / 25;
+            const speed = Phaser.Math.Between(100, 250);
+            const particle = this.add.circle(x, y, Phaser.Math.Between(2, 4), color, 0.8);
+            particle.setDepth(150);
+            
+            this.tweens.add({
+                targets: particle,
+                x: x + Math.cos(angle) * speed,
+                y: y + Math.sin(angle) * speed,
+                alpha: 0,
+                scale: 0,
+                duration: Phaser.Math.Between(400, 700),
+                ease: 'Cubic.easeOut',
+                onComplete: () => particle.destroy()
+            });
+        }
+    }
+
+    createLevelUpEffect() {
+        const WIDTH = this.BLOCK_SIZE * this.GRID_WIDTH;
+        const centerX = this.offsetX + WIDTH/2;
+        const centerY = this.offsetY + this.BLOCK_SIZE * this.GRID_HEIGHT/2;
+        
+        // Radial burst
+        for (let i = 0; i < 50; i++) {
+            const angle = (Math.PI * 2 * i) / 50;
+            const distance = 150;
+            const particle = this.add.circle(centerX, centerY, 3, 0x5E72E4, 1);
+            particle.setDepth(200);
+            
+            this.tweens.add({
+                targets: particle,
+                x: centerX + Math.cos(angle) * distance,
+                y: centerY + Math.sin(angle) * distance,
+                alpha: 0,
+                duration: 800,
+                ease: 'Quad.easeOut',
+                onComplete: () => particle.destroy()
+            });
+        }
+        
+        // Flash screen
+        const flash = this.add.rectangle(
+            centerX, centerY,
+            WIDTH * 2, this.BLOCK_SIZE * this.GRID_HEIGHT * 2,
+            0xFFFFFF, 0.3
+        );
+        flash.setDepth(199);
+        this.tweens.add({
+            targets: flash,
+            alpha: 0,
+            duration: 300,
+            onComplete: () => flash.destroy()
+        });
     }
 }
 
