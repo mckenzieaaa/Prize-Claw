@@ -1,5 +1,6 @@
 // Tetris Claw - Modern Block Grabber Game
-// A unique twist on claw machines with Tetris pieces and stacking mechanics
+// WASD to move grabbed piece, SPACE to grab/release
+// Drag pieces to EXIT box to score!
 
 const TETROMINO_SHAPES = {
     I: { blocks: [[0,0], [1,0], [2,0], [3,0]], color: 0x00F0F0, name: 'I' },
@@ -11,13 +12,142 @@ const TETROMINO_SHAPES = {
     L: { blocks: [[2,0], [0,1], [1,1], [2,1]], color: 0xF0A000, name: 'L' }
 };
 
+// Main Menu Scene
+class MenuScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'MenuScene' });
+    }
+
+    create() {
+        const WIDTH = 700;
+        const HEIGHT = 800;
+
+        // Background gradient
+        const bg = this.add.graphics();
+        bg.fillGradientStyle(0x0f0f1a, 0x0f0f1a, 0x1a1a2e, 0x1a1a2e, 1);
+        bg.fillRect(0, 0, WIDTH, HEIGHT);
+
+        // Floating particles
+        this.createAmbientParticles(WIDTH, HEIGHT);
+
+        // Title
+        const title = this.add.text(WIDTH/2, 180, 'TETRIS CLAW', {
+            fontSize: '64px',
+            color: '#FFFFFF',
+            fontStyle: 'bold',
+            stroke: '#5E72E4',
+            strokeThickness: 4
+        }).setOrigin(0.5);
+
+        this.tweens.add({
+            targets: title,
+            y: 170,
+            duration: 2000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+        });
+
+        // Subtitle
+        this.add.text(WIDTH/2, 260, 'Modern Block Grabber', {
+            fontSize: '24px',
+            color: '#8899AA',
+            fontStyle: 'normal'
+        }).setOrigin(0.5);
+
+        // Play button
+        this.createButton(WIDTH/2, 380, 'PLAY', () => {
+            this.scene.start('GameScene');
+        });
+
+        // How to play
+        const instructions = [
+            'WASD - Move the claw',
+            'SPACE - Grab/Release blocks',
+            'Drag pieces to EXIT box',
+            'Clear before RED LINE!'
+        ];
+
+        instructions.forEach((text, i) => {
+            this.add.text(WIDTH/2, 500 + i * 35, text, {
+                fontSize: '18px',
+                color: '#AABBCC'
+            }).setOrigin(0.5);
+        });
+
+        // Credits
+        this.add.text(WIDTH/2, HEIGHT - 40, 'Modern Minimalist Design', {
+            fontSize: '14px',
+            color: '#556677'
+        }).setOrigin(0.5);
+    }
+
+    createButton(x, y, text, callback) {
+        const btn = this.add.container(x, y);
+        
+        const bg = this.add.rectangle(0, 0, 220, 60, 0x5E72E4, 0.8);
+        bg.setStrokeStyle(2, 0x8899FF, 0.8);
+        
+        const label = this.add.text(0, 0, text, {
+            fontSize: '28px',
+            color: '#FFFFFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        btn.add([bg, label]);
+        btn.setSize(220, 60);
+        btn.setInteractive();
+
+        btn.on('pointerover', () => {
+            this.tweens.add({
+                targets: bg,
+                scaleX: 1.05,
+                scaleY: 1.05,
+                duration: 200
+            });
+        });
+
+        btn.on('pointerout', () => {
+            this.tweens.add({
+                targets: bg,
+                scaleX: 1,
+                scaleY: 1,
+                duration: 200
+            });
+        });
+
+        btn.on('pointerdown', callback);
+
+        return btn;
+    }
+
+    createAmbientParticles(WIDTH, HEIGHT) {
+        for (let i = 0; i < 20; i++) {
+            const x = Phaser.Math.Between(0, WIDTH);
+            const y = Phaser.Math.Between(0, HEIGHT);
+            const size = Phaser.Math.Between(1, 3);
+            const particle = this.add.circle(x, y, size, 0x5E72E4, Phaser.Math.FloatBetween(0.1, 0.3));
+            
+            this.tweens.add({
+                targets: particle,
+                y: y - 200,
+                alpha: 0,
+                duration: Phaser.Math.Between(5000, 10000),
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+        }
+    }
+}
+
+// Main Game Scene
 class GameScene extends Phaser.Scene {
     constructor() {
         super({ key: 'GameScene' });
         this.BLOCK_SIZE = 40;
-        this.GRID_WIDTH = 10;
-        this.GRID_HEIGHT = 16;
-        this.DANGER_LINE = 3; // Red line at row 3 from top
+        this.GRID_WIDTH = 8;
+        this.GRID_HEIGHT = 14;
+        this.DANGER_LINE = 3;
     }
 
     preload() {
@@ -25,16 +155,15 @@ class GameScene extends Phaser.Scene {
     }
 
     createBlockTextures() {
-        // Create modern frosted glass blocks for each Tetromino type with enhanced 3D effect
         Object.entries(TETROMINO_SHAPES).forEach(([key, data]) => {
             const graphics = this.add.graphics();
             const size = this.BLOCK_SIZE;
             
-            // Shadow/depth layer
+            // Shadow
             graphics.fillStyle(0x000000, 0.3);
             graphics.fillRoundedRect(4, 6, size-4, size-4, 8);
             
-            // Main block with enhanced gradient for depth
+            // Main block with gradient
             const color = Phaser.Display.Color.ValueToColor(data.color);
             graphics.fillGradientStyle(
                 color.lighten(30).color,
@@ -45,152 +174,53 @@ class GameScene extends Phaser.Scene {
             );
             graphics.fillRoundedRect(2, 2, size-4, size-4, 8);
             
-            // Glossy top layer (frosted glass effect)
+            // Glossy layer
             graphics.fillStyle(0xFFFFFF, 0.25);
             graphics.fillRoundedRect(2, 2, size-4, size/2.5, 8);
             
-            // Sharp highlight
+            // Highlight
             graphics.fillStyle(0xFFFFFF, 0.5);
             graphics.fillRoundedRect(6, 6, size-16, 6, 3);
             
-            // Inner glow
-            graphics.lineStyle(1, color.lighten(40).color, 0.4);
-            graphics.strokeRoundedRect(3, 3, size-6, size-6, 7);
-            
-            // Outer border with glow
+            // Border glow
             graphics.lineStyle(2, color.lighten(35).color, 0.7);
             graphics.strokeRoundedRect(2, 2, size-4, size-4, 8);
-            
-            // Subtle bottom reflection
-            graphics.fillStyle(0xFFFFFF, 0.1);
-            graphics.fillRoundedRect(2, size-10, size-4, 8, 4);
             
             graphics.generateTexture(`block_${key}`, size, size);
             graphics.destroy();
         });
-
-        // Create claw texture with metallic effect
-        this.createClawTexture();
-        
-        // Create particle texture
-        this.createParticleTexture();
-    }
-
-    createParticleTexture() {
-        const graphics = this.add.graphics();
-        
-        // Glowing particle
-        graphics.fillGradientStyle(0xFFFFFF, 0xFFFFFF, 0x5E72E4, 0x5E72E4, 1);
-        graphics.fillCircle(4, 4, 4);
-        
-        graphics.fillStyle(0xFFFFFF, 0.6);
-        graphics.fillCircle(4, 4, 2);
-        
-        graphics.generateTexture('particle', 8, 8);
-        graphics.destroy();
-    }
-
-    createClawTexture() {
-        const graphics = this.add.graphics();
-        const size = 60;
-        
-        // Modern minimalist claw
-        // Upper part (metallic gradient)
-        graphics.fillGradientStyle(0xE0E0E0, 0xE0E0E0, 0x909090, 0x909090, 1);
-        graphics.fillRoundedRect(size/2 - 4, 0, 8, 20, 4);
-        
-        // Claw arms
-        graphics.lineStyle(6, 0xB0B0B0, 1);
-        graphics.beginPath();
-        graphics.moveTo(size/2, 20);
-        graphics.lineTo(size/2 - 20, 45);
-        graphics.strokePath();
-        
-        graphics.beginPath();
-        graphics.moveTo(size/2, 20);
-        graphics.lineTo(size/2 + 20, 45);
-        graphics.strokePath();
-        
-        // Glow effect
-        graphics.lineStyle(2, 0xFFFFFF, 0.6);
-        graphics.strokeRoundedRect(size/2 - 3, 1, 6, 18, 3);
-        
-        graphics.generateTexture('claw', size, size);
-        graphics.destroy();
     }
 
     create() {
         const WIDTH = this.BLOCK_SIZE * this.GRID_WIDTH;
         const HEIGHT = this.BLOCK_SIZE * this.GRID_HEIGHT;
         const OFFSET_X = 60;
-        const OFFSET_Y = 80;
+        const OFFSET_Y = 100;
 
-        // Dark modern background with subtle gradient
-        const bgGradient = this.add.graphics();
-        bgGradient.fillGradientStyle(0x0f0f1a, 0x0f0f1a, 0x1a1a2e, 0x1a1a2e, 1);
-        bgGradient.fillRect(0, 0, WIDTH + OFFSET_X * 2, HEIGHT + OFFSET_Y * 2);
+        this.offsetX = OFFSET_X;
+        this.offsetY = OFFSET_Y;
 
-        // Ambient floating particles
-        this.createAmbientParticles(WIDTH, HEIGHT, OFFSET_X, OFFSET_Y);
+        // Background
+        const bg = this.add.graphics();
+        bg.fillGradientStyle(0x0f0f1a, 0x0f0f1a, 0x1a1a2e, 0x1a1a2e, 1);
+        bg.fillRect(0, 0, 700, 800);
 
-        // Game area background with ultra-frosted effect
-        const gameArea = this.add.rectangle(
-            OFFSET_X + WIDTH/2,
-            OFFSET_Y + HEIGHT/2,
-            WIDTH,
-            HEIGHT,
-            0x0a0a1a,
-            0.5
-        );
+        // Game area
+        this.add.rectangle(OFFSET_X + WIDTH/2, OFFSET_Y + HEIGHT/2, WIDTH, HEIGHT, 0x0a0a1a, 0.5);
         
-        // Add inner glow to game area
-        const innerGlow = this.add.graphics();
-        innerGlow.lineStyle(3, 0x5E72E4, 0.15);
-        innerGlow.strokeRect(OFFSET_X - 1, OFFSET_Y - 1, WIDTH + 2, HEIGHT + 2);
-        
-        // Outer glow
-        innerGlow.lineStyle(1, 0x5E72E4, 0.3);
-        innerGlow.strokeRect(OFFSET_X - 3, OFFSET_Y - 3, WIDTH + 6, HEIGHT + 6);
-
-        // Grid lines (more subtle and elegant)
-        const gridGraphics = this.add.graphics();
-        gridGraphics.lineStyle(1, 0x2a2a3e, 0.15);
+        // Grid
+        const grid = this.add.graphics();
+        grid.lineStyle(1, 0x2a2a3e, 0.15);
         for (let x = 0; x <= this.GRID_WIDTH; x++) {
-            gridGraphics.lineBetween(
-                OFFSET_X + x * this.BLOCK_SIZE,
-                OFFSET_Y,
-                OFFSET_X + x * this.BLOCK_SIZE,
-                OFFSET_Y + HEIGHT
-            );
+            grid.lineBetween(OFFSET_X + x * this.BLOCK_SIZE, OFFSET_Y, OFFSET_X + x * this.BLOCK_SIZE, OFFSET_Y + HEIGHT);
         }
         for (let y = 0; y <= this.GRID_HEIGHT; y++) {
-            gridGraphics.lineBetween(
-                OFFSET_X,
-                OFFSET_Y + y * this.BLOCK_SIZE,
-                OFFSET_X + WIDTH,
-                OFFSET_Y + y * this.BLOCK_SIZE
-            );
+            grid.lineBetween(OFFSET_X, OFFSET_Y + y * this.BLOCK_SIZE, OFFSET_X + WIDTH, OFFSET_Y + y * this.BLOCK_SIZE);
         }
 
-        // Red danger line with glow
+        // Red danger line
         const dangerY = OFFSET_Y + this.DANGER_LINE * this.BLOCK_SIZE;
-        this.dangerLine = this.add.rectangle(
-            OFFSET_X + WIDTH/2,
-            dangerY,
-            WIDTH,
-            3,
-            0xFF3366
-        );
-        this.add.rectangle(
-            OFFSET_X + WIDTH/2,
-            dangerY,
-            WIDTH,
-            20,
-            0xFF3366,
-            0.2
-        );
-
-        // Pulse animation for danger line
+        this.dangerLine = this.add.rectangle(OFFSET_X + WIDTH/2, dangerY, WIDTH, 3, 0xFF3366);
         this.tweens.add({
             targets: this.dangerLine,
             alpha: 0.5,
@@ -199,492 +229,641 @@ class GameScene extends Phaser.Scene {
             repeat: -1
         });
 
+        // Exit box (right side)
+        this.exitBox = {
+            x: OFFSET_X + WIDTH + 40,
+            y: OFFSET_Y + 100,
+            width: 120,
+            height: 140
+        };
+        
+        const exitBg = this.add.rectangle(
+            this.exitBox.x + this.exitBox.width/2,
+            this.exitBox.y + this.exitBox.height/2,
+            this.exitBox.width,
+            this.exitBox.height,
+            0x32C832,
+            0.3
+        );
+        exitBg.setStrokeStyle(3, 0x32C832, 0.8);
+        
+        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + this.exitBox.height/2, 'EXIT', {
+            fontSize: '24px',
+            color: '#32C832',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
         // Game state
         this.gridData = Array(this.GRID_HEIGHT).fill().map(() => Array(this.GRID_WIDTH).fill(null));
-        this.blocks = [];
-        this.claw = {
-            x: OFFSET_X + WIDTH/2,
-            y: OFFSET_Y - 20,
-            homeX: OFFSET_X + WIDTH/2,
-            homeY: OFFSET_Y - 20,
-            state: 'idle',
-            speedH: 200,
-            speedV: 250,
-            grabbedBlocks: [],
-            sprite: null,
-            rope: null
-        };
-
-        this.offsetX = OFFSET_X;
-        this.offsetY = OFFSET_Y;
+        this.tetrominoes = []; // Each tetromino is a group of blocks
+        this.grabbedPiece = null;
         this.score = 0;
         this.level = 1;
         this.spawnTimer = 0;
-        this.spawnInterval = 4000; // 4 seconds
+        this.spawnInterval = 5000;
         this.gameOver = false;
 
-        // Claw rope
-        this.claw.rope = this.add.line(
-            0, 0,
-            this.claw.x, OFFSET_Y - 40,
-            this.claw.x, this.claw.y,
-            0x808080
-        );
-        this.claw.rope.setLineWidth(2);
-        this.claw.rope.setDepth(100);
-        this.claw.rope.setAlpha(0.8);
-
-        // Claw sprite
-        this.claw.sprite = this.add.image(this.claw.x, this.claw.y, 'claw');
-        this.claw.sprite.setDepth(101);
-
-        // Modern UI
-        this.createModernUI(WIDTH, HEIGHT, OFFSET_X, OFFSET_Y);
+        // Create claw
+        this.createClaw();
 
         // Input
         this.cursors = this.input.keyboard.createCursorKeys();
+        this.wasd = {
+            up: this.input.keyboard.addKey('W'),
+            down: this.input.keyboard.addKey('S'),
+            left: this.input.keyboard.addKey('A'),
+            right: this.input.keyboard.addKey('D')
+        };
         this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
-        this.input.on('pointerdown', (pointer) => {
-            if (this.gameOver) {
-                this.scene.restart();
-                return;
-            }
-            if (this.claw.state === 'idle') {
-                const minX = OFFSET_X + this.BLOCK_SIZE/2;
-                const maxX = OFFSET_X + WIDTH - this.BLOCK_SIZE/2;
-                this.claw.targetX = Phaser.Math.Clamp(pointer.x, minX, maxX);
-            }
-        });
+        // Track key press to avoid repeating
+        this.spacePressed = false;
+        this.moveTimer = { left: 0, right: 0, up: 0, down: 0 };
+        this.moveDelay = 150; // ms between moves
 
-        // Spawn initial row
-        this.spawnNewRow();
+        // UI
+        this.createUI();
+
+        // Menu button
+        this.createMenuButton();
+
+        // Spawn initial pieces
+        this.spawnTetromino();
+        this.spawnTetromino();
     }
 
-    createAmbientParticles(WIDTH, HEIGHT, OFFSET_X, OFFSET_Y) {
-        // Create slowly floating ambient particles for atmosphere
-        for (let i = 0; i < 30; i++) {
-            const x = Phaser.Math.Between(OFFSET_X, OFFSET_X + WIDTH);
-            const y = Phaser.Math.Between(OFFSET_Y, OFFSET_Y + HEIGHT);
-            const size = Phaser.Math.Between(1, 3);
-            const particle = this.add.circle(x, y, size, 0x5E72E4, Phaser.Math.FloatBetween(0.1, 0.3));
-            particle.setDepth(5);
-            
-            // Slow floating animation
-            this.tweens.add({
-                targets: particle,
-                y: y - Phaser.Math.Between(100, 200),
-                x: x + Phaser.Math.Between(-50, 50),
-                alpha: 0,
-                duration: Phaser.Math.Between(5000, 10000),
-                ease: 'Sine.easeInOut',
-                onComplete: () => {
-                    // Respawn at bottom
-                    particle.y = OFFSET_Y + HEIGHT;
-                    particle.x = Phaser.Math.Between(OFFSET_X, OFFSET_X + WIDTH);
-                    particle.alpha = Phaser.Math.FloatBetween(0.1, 0.3);
-                    this.tweens.add({
-                        targets: particle,
-                        y: y - Phaser.Math.Between(100, 200),
-                        x: x + Phaser.Math.Between(-50, 50),
-                        alpha: 0,
-                        duration: Phaser.Math.Between(5000, 10000),
-                        ease: 'Sine.easeInOut',
-                        repeat: -1
-                    });
-                }
-            });
-        }
+    createClaw() {
+        const WIDTH = this.BLOCK_SIZE * this.GRID_WIDTH;
+        const HEIGHT = this.BLOCK_SIZE * this.GRID_HEIGHT;
+        
+        // Claw container
+        this.claw = this.add.container(
+            this.offsetX + WIDTH/2,
+            this.offsetY + 60
+        );
+        this.claw.setDepth(100);
+
+        // Rope/chain
+        this.clawRope = this.add.rectangle(0, -30, 3, 30, 0x888888, 0.8);
+        this.claw.add(this.clawRope);
+
+        // Claw arms (like grabber)
+        const clawGraphics = this.add.graphics();
+        
+        // Left arm
+        clawGraphics.fillStyle(0xFFCC00, 0.9);
+        clawGraphics.fillRect(-15, -5, 10, 25);
+        clawGraphics.fillTriangle(-15, 20, -5, 20, -10, 28);
+        
+        // Right arm
+        clawGraphics.fillRect(5, -5, 10, 25);
+        clawGraphics.fillTriangle(5, 20, 15, 20, 10, 28);
+        
+        // Center body
+        clawGraphics.fillStyle(0xFFDD33, 1);
+        clawGraphics.fillRoundedRect(-8, -8, 16, 12, 3);
+        
+        clawGraphics.generateTexture('claw_texture', 32, 36);
+        clawGraphics.destroy();
+
+        this.clawSprite = this.add.image(0, 0, 'claw_texture');
+        this.claw.add(this.clawSprite);
+
+        // Claw bounds
+        this.clawBounds = {
+            minX: this.offsetX + 20,
+            maxX: this.offsetX + WIDTH - 20,
+            minY: this.offsetY + 40,
+            maxY: this.offsetY + HEIGHT - 40
+        };
+
+        // Claw grab zone (collision area)
+        this.clawGrabZone = this.add.rectangle(0, 18, 30, 30, 0xFF0000, 0);
+        this.claw.add(this.clawGrabZone);
     }
 
-    createModernUI(WIDTH, HEIGHT, OFFSET_X, OFFSET_Y) {
-        // Score panel (top left) - frosted glass effect
+    createUI() {
+        // Score panel
         const scorePanel = this.add.rectangle(30, 30, 180, 80, 0x1a1a2e, 0.8);
         scorePanel.setStrokeStyle(2, 0x5e72e4, 0.6);
         scorePanel.setOrigin(0, 0);
         scorePanel.setDepth(200);
 
-        this.scoreText = this.add.text(40, 45, 'SCORE', {
+        this.add.text(40, 45, 'SCORE', {
             fontSize: '14px',
             color: '#8899AA',
-            fontStyle: 'bold',
-            letterSpacing: 2
+            fontStyle: 'bold'
         }).setDepth(201);
 
-        this.scoreValue = this.add.text(40, 65, '0', {
+        this.scoreText = this.add.text(40, 65, '0', {
             fontSize: '28px',
             color: '#FFFFFF',
             fontStyle: 'bold'
         }).setDepth(201);
 
-        // Level indicator
-        this.levelText = this.add.text(140, 65, 'L1', {
-            fontSize: '20px',
-            color: '#5e72e4',
+        // Instructions
+        this.instructionText = this.add.text(350, 720, 'WASD: Move Claw  •  SPACE: Grab/Release  •  Drag to EXIT', {
+            fontSize: '14px',
+            color: '#AABBCC'
+        }).setOrigin(0.5).setDepth(201);
+    }
+
+    createMenuButton() {
+        const btn = this.add.rectangle(640, 30, 100, 40, 0x5E72E4, 0.8);
+        btn.setStrokeStyle(2, 0x8899FF);
+        btn.setInteractive();
+        btn.setDepth(200);
+
+        const label = this.add.text(640, 30, 'MENU', {
+            fontSize: '16px',
+            color: '#FFF',
             fontStyle: 'bold'
-        }).setDepth(201);
+        }).setOrigin(0.5).setDepth(201);
 
-        // Instructions panel
-        const instructionPanel = this.add.rectangle(
-            OFFSET_X + WIDTH/2,
-            OFFSET_Y + HEIGHT + 50,
-            WIDTH,
-            60,
-            0x1a1a2e,
-            0.8
-        );
-        instructionPanel.setStrokeStyle(2, 0x5e72e4, 0.4);
-        instructionPanel.setDepth(200);
-
-        this.instructionText = this.add.text(
-            OFFSET_X + WIDTH/2,
-            OFFSET_Y + HEIGHT + 50,
-            'ARROWS to move • SPACE to grab • Clear blocks before they reach the RED LINE!',
-            {
-                fontSize: '14px',
-                color: '#AABBCC',
-                fontStyle: 'normal'
-            }
-        ).setOrigin(0.5).setDepth(201);
-
-        // Game over overlay (hidden initially)
-        this.gameOverGroup = this.add.group();
-        const overlay = this.add.rectangle(
-            OFFSET_X + WIDTH/2,
-            OFFSET_Y + HEIGHT/2,
-            WIDTH * 2,
-            HEIGHT * 2,
-            0x000000,
-            0.85
-        ).setDepth(300);
-        overlay.setVisible(false);
-
-        const gameOverText = this.add.text(
-            OFFSET_X + WIDTH/2,
-            OFFSET_Y + HEIGHT/2 - 40,
-            'GAME OVER',
-            {
-                fontSize: '48px',
-                color: '#FF3366',
-                fontStyle: 'bold'
-            }
-        ).setOrigin(0.5).setDepth(301);
-        gameOverText.setVisible(false);
-
-        const restartText = this.add.text(
-            OFFSET_X + WIDTH/2,
-            OFFSET_Y + HEIGHT/2 + 40,
-            'Click to restart',
-            {
-                fontSize: '20px',
-                color: '#AABBCC'
-            }
-        ).setOrigin(0.5).setDepth(301);
-        restartText.setVisible(false);
-
-        this.gameOverGroup.addMultiple([overlay, gameOverText, restartText]);
-        this.gameOverOverlay = overlay;
-        this.gameOverText = gameOverText;
-        this.restartText = restartText;
+        btn.on('pointerdown', () => {
+            this.showPauseMenu();
+        });
     }
 
-    spawnNewRow() {
-        if (this.gameOver) return;
-
-        const shapes = Object.keys(TETROMINO_SHAPES);
-        const numPieces = Phaser.Math.Between(2, 4);
+    showPauseMenu() {
+        this.scene.pause();
         
-        for (let i = 0; i < numPieces; i++) {
-            const shapeKey = Phaser.Utils.Array.GetRandom(shapes);
-            const shape = TETROMINO_SHAPES[shapeKey];
-            const startCol = Phaser.Math.Between(0, this.GRID_WIDTH - 4);
-            
-            shape.blocks.forEach(([bx, by]) => {
-                const gridX = startCol + bx;
-                const gridY = this.GRID_HEIGHT - 1 - by;
-                
-                if (gridX >= 0 && gridX < this.GRID_WIDTH && !this.gridData[gridY][gridX]) {
-                    const block = this.add.image(
-                        this.offsetX + gridX * this.BLOCK_SIZE + this.BLOCK_SIZE/2,
-                        this.offsetY + gridY * this.BLOCK_SIZE + this.BLOCK_SIZE/2,
-                        `block_${shapeKey}`
-                    );
-                    block.setData('gridX', gridX);
-                    block.setData('gridY', gridY);
-                    block.setData('type', shapeKey);
-                    block.setDepth(10);
-                    
-                    this.blocks.push(block);
-                    this.gridData[gridY][gridX] = block;
-                }
-            });
-        }
+        const overlay = this.add.rectangle(350, 400, 700, 800, 0x000000, 0.8);
+        overlay.setDepth(300);
+        overlay.setInteractive();
 
-        // Move all blocks up by one row
-        this.moveBlocksUp();
-    }
+        const panel = this.add.rectangle(350, 400, 400, 300, 0x1a1a2e, 0.95);
+        panel.setStrokeStyle(3, 0x5E72E4);
+        panel.setDepth(301);
 
-    moveBlocksUp() {
-        // Move blocks up in grid
-        for (let y = 0; y < this.GRID_HEIGHT - 1; y++) {
-            for (let x = 0; x < this.GRID_WIDTH; x++) {
-                this.gridData[y][x] = this.gridData[y + 1][x];
-                if (this.gridData[y][x]) {
-                    this.gridData[y][x].setData('gridY', y);
-                }
-            }
-        }
-        // Clear bottom row
-        for (let x = 0; x < this.GRID_WIDTH; x++) {
-            this.gridData[this.GRID_HEIGHT - 1][x] = null;
-        }
+        const title = this.add.text(350, 300, 'PAUSED', {
+            fontSize: '42px',
+            color: '#FFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(302);
 
-        // Animate blocks moving up
-        this.blocks.forEach(block => {
-            const gridY = block.getData('gridY');
-            const gridX = block.getData('gridX');
-            this.tweens.add({
-                targets: block,
-                y: this.offsetY + gridY * this.BLOCK_SIZE + this.BLOCK_SIZE/2,
-                duration: 300,
-                ease: 'Cubic.easeOut'
-            });
+        // Resume button
+        const resumeBtn = this.add.rectangle(350, 380, 200, 50, 0x32C832, 0.8);
+        resumeBtn.setStrokeStyle(2, 0x4AE84A);
+        resumeBtn.setInteractive();
+        resumeBtn.setDepth(302);
+
+        const resumeText = this.add.text(350, 380, 'RESUME', {
+            fontSize: '20px',
+            color: '#FFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(303);
+
+        resumeBtn.on('pointerdown', () => {
+            overlay.destroy();
+            panel.destroy();
+            title.destroy();
+            resumeBtn.destroy();
+            resumeText.destroy();
+            restartBtn.destroy();
+            restartText.destroy();
+            menuBtn.destroy();
+            menuText.destroy();
+            this.scene.resume();
         });
 
-        // Check game over
+        // Restart button
+        const restartBtn = this.add.rectangle(350, 450, 200, 50, 0xF0A000, 0.8);
+        restartBtn.setStrokeStyle(2, 0xFFB820);
+        restartBtn.setInteractive();
+        restartBtn.setDepth(302);
+
+        const restartText = this.add.text(350, 450, 'RESTART', {
+            fontSize: '20px',
+            color: '#FFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(303);
+
+        restartBtn.on('pointerdown', () => {
+            this.scene.restart();
+        });
+
+        // Main menu button
+        const menuBtn = this.add.rectangle(350, 520, 200, 50, 0xFF3366, 0.8);
+        menuBtn.setStrokeStyle(2, 0xFF5588);
+        menuBtn.setInteractive();
+        menuBtn.setDepth(302);
+
+        const menuText = this.add.text(350, 520, 'MAIN MENU', {
+            fontSize: '20px',
+            color: '#FFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(303);
+
+        menuBtn.on('pointerdown', () => {
+            this.scene.stop();
+            this.scene.start('MenuScene');
+        });
+    }
+
+    spawnTetromino() {
+        const shapes = Object.keys(TETROMINO_SHAPES);
+        const shapeKey = Phaser.Utils.Array.GetRandom(shapes);
+        const shape = TETROMINO_SHAPES[shapeKey];
+        
+        // Random position at bottom
+        const startCol = Phaser.Math.Between(1, this.GRID_WIDTH - 5);
+        const startRow = this.GRID_HEIGHT - 1;
+
+        const tetromino = {
+            type: shapeKey,
+            blocks: [],
+            gridPositions: [],
+            grabbed: false,
+            container: null
+        };
+
+        // Create a container to hold the entire tetromino shape
+        const centerX = this.offsetX + (startCol + 1.5) * this.BLOCK_SIZE;
+        const centerY = this.offsetY + (startRow - 0.5) * this.BLOCK_SIZE;
+        
+        tetromino.container = this.add.container(centerX, centerY);
+        tetromino.container.setDepth(10);
+
+        // Calculate bounds for centering
+        let minX = 999, maxX = -999, minY = 999, maxY = -999;
+        shape.blocks.forEach(([bx, by]) => {
+            minX = Math.min(minX, bx);
+            maxX = Math.max(maxX, bx);
+            minY = Math.min(minY, by);
+            maxY = Math.max(maxY, by);
+        });
+
+        const offsetBx = (minX + maxX) / 2;
+        const offsetBy = (minY + maxY) / 2;
+
+        // Create blocks relative to container
+        shape.blocks.forEach(([bx, by]) => {
+            const gridX = startCol + bx;
+            const gridY = startRow - by;
+            
+            if (gridX >= 0 && gridX < this.GRID_WIDTH && gridY >= 0 && gridY < this.GRID_HEIGHT) {
+                const block = this.add.image(
+                    (bx - offsetBx) * this.BLOCK_SIZE,
+                    -(by - offsetBy) * this.BLOCK_SIZE,
+                    `block_${shapeKey}`
+                );
+                
+                tetromino.container.add(block);
+                tetromino.blocks.push(block);
+                tetromino.gridPositions.push({ x: gridX, y: gridY });
+                this.gridData[gridY][gridX] = tetromino;
+            }
+        });
+
+        this.tetrominoes.push(tetromino);
         this.checkGameOver();
     }
 
+    update(time, delta) {
+        if (this.gameOver) return;
+
+        // Spawn timer
+        this.spawnTimer += delta;
+        if (this.spawnTimer >= this.spawnInterval) {
+            this.spawnTimer = 0;
+            this.spawnTetromino();
+        }
+
+        // Update timers
+        for (let key in this.moveTimer) {
+            if (this.moveTimer[key] > 0) {
+                this.moveTimer[key] -= delta;
+            }
+        }
+
+        // WASD controls - smooth continuous movement
+        const moveSpeed = 3;
+        
+        // A - Move LEFT
+        if (this.wasd.left.isDown) {
+            if (this.grabbedPiece) {
+                // Move grabbed piece and claw together
+                this.moveClaw(-moveSpeed, 0);
+                this.syncGrabbedPieceToClaw();
+            } else {
+                // Just move claw
+                this.moveClaw(-moveSpeed, 0);
+            }
+        }
+        
+        // D - Move RIGHT
+        if (this.wasd.right.isDown) {
+            if (this.grabbedPiece) {
+                this.moveClaw(moveSpeed, 0);
+                this.syncGrabbedPieceToClaw();
+            } else {
+                this.moveClaw(moveSpeed, 0);
+            }
+        }
+        
+        // W - Move UP
+        if (this.wasd.up.isDown) {
+            if (this.grabbedPiece) {
+                this.moveClaw(0, -moveSpeed);
+                this.syncGrabbedPieceToClaw();
+            } else {
+                this.moveClaw(0, -moveSpeed);
+            }
+        }
+        
+        // S - Move DOWN
+        if (this.wasd.down.isDown) {
+            if (this.grabbedPiece) {
+                this.moveClaw(0, moveSpeed);
+                this.syncGrabbedPieceToClaw();
+            } else {
+                this.moveClaw(0, moveSpeed);
+            }
+        }
+
+        // Grab/Release with Space
+        if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
+            if (this.grabbedPiece) {
+                this.releasePiece();
+            } else {
+                this.tryGrabAtClaw();
+            }
+        }
+
+        // Check if in exit box
+        if (this.grabbedPiece) {
+            this.checkExitBox();
+        }
+    }
+
+    moveClaw(dx, dy) {
+        this.claw.x = Phaser.Math.Clamp(
+            this.claw.x + dx,
+            this.clawBounds.minX,
+            this.clawBounds.maxX
+        );
+        this.claw.y = Phaser.Math.Clamp(
+            this.claw.y + dy,
+            this.clawBounds.minY,
+            this.clawBounds.maxY
+        );
+    }
+
+    syncGrabbedPieceToClaw() {
+        if (!this.grabbedPiece) return;
+        
+        // Keep piece attached to claw
+        this.grabbedPiece.container.x = this.claw.x;
+        this.grabbedPiece.container.y = this.claw.y + 35;
+    }
+
+    tryGrabAtClaw() {
+        // Find piece that intersects with claw
+        const clawX = this.claw.x;
+        const clawY = this.claw.y + 20; // Check below claw
+        const grabRadius = 40; // Larger grab radius
+
+        // Find closest piece to claw
+        let closestPiece = null;
+        let closestDist = Infinity;
+
+        this.tetrominoes.forEach(t => {
+            if (t.grabbed || t.blocks.length === 0) return;
+            
+            const dist = Phaser.Math.Distance.Between(
+                clawX, clawY,
+                t.container.x, t.container.y
+            );
+            
+            if (dist < grabRadius && dist < closestDist) {
+                closestDist = dist;
+                closestPiece = t;
+            }
+        });
+
+        if (!closestPiece) {
+            console.log('No piece found near claw!');
+            return;
+        }
+
+        console.log('Grabbed piece type:', closestPiece.type);
+
+        this.grabbedPiece = closestPiece;
+        this.grabbedPiece.grabbed = true;
+
+        // Remove from grid
+        this.grabbedPiece.gridPositions.forEach(pos => {
+            if (pos.y >= 0 && pos.y < this.GRID_HEIGHT && pos.x >= 0 && pos.x < this.GRID_WIDTH) {
+                this.gridData[pos.y][pos.x] = null;
+            }
+        });
+
+        // Attach to claw visually
+        this.tweens.add({
+            targets: this.grabbedPiece.container,
+            x: this.claw.x,
+            y: this.claw.y + 35,
+            scaleX: 1.1,
+            scaleY: 1.1,
+            duration: 200,
+            ease: 'Back.easeOut'
+        });
+        this.grabbedPiece.container.setDepth(90);
+
+        // Claw grab animation
+        this.tweens.add({
+            targets: this.clawSprite,
+            scaleX: 0.9,
+            scaleY: 1.1,
+            duration: 100,
+            yoyo: true
+        });
+
+        // Add glow effect
+        this.grabbedPiece.blocks.forEach(block => {
+            block.setTint(0xFFFFFF);
+        });
+    }
+
+
+
+    releasePiece() {
+        if (!this.grabbedPiece) return;
+
+        this.grabbedPiece.grabbed = false;
+        
+        // Just drop at current position
+        const currentX = this.grabbedPiece.container.x;
+        const currentY = this.grabbedPiece.container.y;
+
+        // Update grid positions based on current position
+        const shape = TETROMINO_SHAPES[this.grabbedPiece.type];
+        
+        // Calculate new grid positions
+        const gridCenterX = Math.round((currentX - this.offsetX) / this.BLOCK_SIZE);
+        const gridCenterY = Math.round((currentY - this.offsetY) / this.BLOCK_SIZE);
+
+        this.grabbedPiece.gridPositions = [];
+        
+        shape.blocks.forEach(([bx, by], i) => {
+            const gridX = gridCenterX + bx - 1;
+            const gridY = gridCenterY - by;
+            
+            this.grabbedPiece.gridPositions.push({ x: gridX, y: gridY });
+            
+            if (gridX >= 0 && gridX < this.GRID_WIDTH && gridY >= 0 && gridY < this.GRID_HEIGHT) {
+                this.gridData[gridY][gridX] = this.grabbedPiece;
+            }
+        });
+
+        // Reset visual
+        this.tweens.add({
+            targets: this.grabbedPiece.container,
+            scaleX: 1,
+            scaleY: 1,
+            duration: 200
+        });
+        this.grabbedPiece.container.setDepth(10);
+        
+        // Claw release animation
+        this.tweens.add({
+            targets: this.clawSprite,
+            scaleX: 1.1,
+            scaleY: 0.95,
+            duration: 100,
+            yoyo: true
+        });
+
+        // Clear tint
+        this.grabbedPiece.blocks.forEach(block => {
+            block.clearTint();
+        });
+
+        this.grabbedPiece = null;
+    }
+
+    checkExitBox() {
+        if (!this.grabbedPiece) return;
+
+        // Check if container center is inside exit box
+        const containerX = this.grabbedPiece.container.x;
+        const containerY = this.grabbedPiece.container.y;
+        
+        const inBox = containerX >= this.exitBox.x &&
+                      containerX <= this.exitBox.x + this.exitBox.width &&
+                      containerY >= this.exitBox.y &&
+                      containerY <= this.exitBox.y + this.exitBox.height;
+
+        if (inBox) {
+            this.deliverPiece();
+        }
+    }
+
+    deliverPiece() {
+        // Particle explosion from container center
+        const centerX = this.grabbedPiece.container.x;
+        const centerY = this.grabbedPiece.container.y;
+        
+        for (let i = 0; i < 30; i++) {
+            const angle = (Math.PI * 2 * i) / 30;
+            const particle = this.add.circle(
+                centerX, centerY, 4,
+                TETROMINO_SHAPES[this.grabbedPiece.type].color, 0.9
+            );
+            particle.setDepth(100);
+            
+            this.tweens.add({
+                targets: particle,
+                x: centerX + Math.cos(angle) * 150,
+                y: centerY + Math.sin(angle) * 150,
+                alpha: 0,
+                duration: 700,
+                ease: 'Quad.easeOut',
+                onComplete: () => particle.destroy()
+            });
+        }
+
+        // Destroy container and all blocks
+        this.grabbedPiece.container.destroy();
+
+        // Score
+        this.score += 100;
+        this.scoreText.setText(this.score.toString());
+
+        // Remove from array
+        this.tetrominoes = this.tetrominoes.filter(t => t !== this.grabbedPiece);
+        this.grabbedPiece = null;
+
+        // Flash exit box
+        this.tweens.add({
+            targets: this.exitBox,
+            alpha: 0.5,
+            duration: 200,
+            yoyo: true
+        });
+    }
+
     checkGameOver() {
+        // Check if any blocks are at or above danger line
         for (let x = 0; x < this.GRID_WIDTH; x++) {
-            if (this.gridData[this.DANGER_LINE][x]) {
-                this.triggerGameOver();
-                return;
+            for (let y = 0; y <= this.DANGER_LINE; y++) {
+                if (this.gridData[y][x]) {
+                    this.triggerGameOver();
+                    return;
+                }
             }
         }
     }
 
     triggerGameOver() {
         this.gameOver = true;
-        this.gameOverOverlay.setVisible(true);
-        this.gameOverText.setVisible(true);
-        this.restartText.setVisible(true);
+        
+        const overlay = this.add.rectangle(350, 400, 700, 800, 0x000000, 0.85);
+        overlay.setDepth(300);
 
-        // Pulse animation
-        this.tweens.add({
-            targets: this.gameOverText,
-            scale: 1.1,
-            duration: 500,
-            yoyo: true,
-            repeat: -1
-        });
-    }
+        const gameOverText = this.add.text(350, 300, 'GAME OVER', {
+            fontSize: '52px',
+            color: '#FF3366',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(301);
 
-    update(time, delta) {
-        if (this.gameOver) return;
+        const scoreText = this.add.text(350, 380, 'Score: ' + this.score, {
+            fontSize: '32px',
+            color: '#FFF'
+        }).setOrigin(0.5).setDepth(301);
 
-        const dt = delta / 1000;
+        // Restart button
+        const restartBtn = this.add.rectangle(350, 480, 200, 50, 0x32C832, 0.8);
+        restartBtn.setStrokeStyle(2, 0x4AE84A);
+        restartBtn.setInteractive();
+        restartBtn.setDepth(302);
 
-        // Spawn timer
-        this.spawnTimer += delta;
-        if (this.spawnTimer >= this.spawnInterval) {
-            this.spawnTimer = 0;
-            this.spawnNewRow();
-        }
+        const restartText = this.add.text(350, 480, 'RESTART', {
+            fontSize: '20px',
+            color: '#FFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(303);
 
-        // Claw movement
-        if (this.claw.state === 'idle') {
-            const minX = this.offsetX + this.BLOCK_SIZE/2;
-            const maxX = this.offsetX + this.BLOCK_SIZE * this.GRID_WIDTH - this.BLOCK_SIZE/2;
-
-            if (this.cursors.left.isDown) {
-                this.claw.x -= this.claw.speedH * dt;
-            }
-            if (this.cursors.right.isDown) {
-                this.claw.x += this.claw.speedH * dt;
-            }
-
-            if (this.claw.targetX !== undefined) {
-                const dx = this.claw.targetX - this.claw.x;
-                if (Math.abs(dx) > 2) {
-                    this.claw.x += Math.sign(dx) * this.claw.speedH * dt;
-                } else {
-                    this.claw.x = this.claw.targetX;
-                    this.claw.targetX = undefined;
-                }
-            }
-
-            this.claw.x = Phaser.Math.Clamp(this.claw.x, minX, maxX);
-
-            if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
-                this.startGrab();
-            }
-        } else if (this.claw.state === 'dropping') {
-            this.claw.y += this.claw.speedV * dt;
-            const maxY = this.offsetY + this.BLOCK_SIZE * this.GRID_HEIGHT - this.BLOCK_SIZE/2;
-            if (this.claw.y >= maxY) {
-                this.claw.y = maxY;
-                this.tryGrab();
-                this.claw.state = 'lifting';
-            }
-        } else if (this.claw.state === 'lifting') {
-            this.claw.y -= this.claw.speedV * dt;
-            this.claw.grabbedBlocks.forEach(block => {
-                const offsetFromClaw = block.getData('offsetFromClaw');
-                block.y = this.claw.y + offsetFromClaw.y;
-            });
-
-            if (this.claw.y <= this.claw.homeY) {
-                this.claw.y = this.claw.homeY;
-                this.deliverBlocks();
-                this.claw.state = 'idle';
-            }
-        }
-
-        // Update claw visuals
-        this.claw.sprite.setPosition(this.claw.x, this.claw.y);
-        this.claw.rope.setTo(
-            this.claw.x,
-            this.offsetY - 40,
-            this.claw.x,
-            this.claw.y
-        );
-    }
-
-    startGrab() {
-        this.claw.state = 'dropping';
-    }
-
-    tryGrab() {
-        const grabRadius = this.BLOCK_SIZE * 1.2;
-        const grabbed = [];
-
-        this.blocks.forEach(block => {
-            const dx = block.x - this.claw.x;
-            const dy = block.y - this.claw.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-
-            if (dist < grabRadius && Math.random() < 0.8) {
-                grabbed.push(block);
-                block.setData('offsetFromClaw', { x: dx, y: dy });
-                
-                // Remove from grid
-                const gridX = block.getData('gridX');
-                const gridY = block.getData('gridY');
-                this.gridData[gridY][gridX] = null;
-            }
+        restartBtn.on('pointerdown', () => {
+            this.scene.restart();
         });
 
-        this.claw.grabbedBlocks = grabbed;
-    }
+        // Menu button
+        const menuBtn = this.add.rectangle(350, 550, 200, 50, 0xFF3366, 0.8);
+        menuBtn.setStrokeStyle(2, 0xFF5588);
+        menuBtn.setInteractive();
+        menuBtn.setDepth(302);
 
-    deliverBlocks() {
-        this.claw.grabbedBlocks.forEach(block => {
-            // Create particle explosion effect
-            this.createParticleExplosion(block.x, block.y, block.getData('type'));
-            
-            // Animate block disappearance
-            this.tweens.add({
-                targets: block,
-                alpha: 0,
-                scale: 0,
-                angle: 360,
-                duration: 400,
-                ease: 'Back.easeIn',
-                onComplete: () => {
-                    block.destroy();
-                    this.blocks = this.blocks.filter(b => b !== block);
-                }
-            });
-            
-            this.score += 10;
-        });
+        const menuText = this.add.text(350, 550, 'MAIN MENU', {
+            fontSize: '20px',
+            color: '#FFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(303);
 
-        if (this.claw.grabbedBlocks.length > 0) {
-            this.scoreValue.setText(this.score.toString());
-            
-            // Flash effect on score
-            this.tweens.add({
-                targets: this.scoreValue,
-                scale: 1.3,
-                duration: 150,
-                yoyo: true,
-                ease: 'Cubic.easeOut'
-            });
-            
-            // Level up every 100 points
-            const newLevel = Math.floor(this.score / 100) + 1;
-            if (newLevel > this.level) {
-                this.level = newLevel;
-                this.levelText.setText('L' + this.level);
-                this.spawnInterval = Math.max(2000, 4000 - (this.level - 1) * 300);
-                
-                // Level up particle burst
-                this.createLevelUpEffect();
-            }
-        }
-
-        this.claw.grabbedBlocks = [];
-    }
-
-    createParticleExplosion(x, y, blockType) {
-        const color = TETROMINO_SHAPES[blockType].color;
-        
-        // Create 20-30 particles
-        for (let i = 0; i < Phaser.Math.Between(20, 30); i++) {
-            const angle = (Math.PI * 2 * i) / 25;
-            const speed = Phaser.Math.Between(100, 250);
-            const particle = this.add.circle(x, y, Phaser.Math.Between(2, 4), color, 0.8);
-            particle.setDepth(150);
-            
-            this.tweens.add({
-                targets: particle,
-                x: x + Math.cos(angle) * speed,
-                y: y + Math.sin(angle) * speed,
-                alpha: 0,
-                scale: 0,
-                duration: Phaser.Math.Between(400, 700),
-                ease: 'Cubic.easeOut',
-                onComplete: () => particle.destroy()
-            });
-        }
-    }
-
-    createLevelUpEffect() {
-        const WIDTH = this.BLOCK_SIZE * this.GRID_WIDTH;
-        const centerX = this.offsetX + WIDTH/2;
-        const centerY = this.offsetY + this.BLOCK_SIZE * this.GRID_HEIGHT/2;
-        
-        // Radial burst
-        for (let i = 0; i < 50; i++) {
-            const angle = (Math.PI * 2 * i) / 50;
-            const distance = 150;
-            const particle = this.add.circle(centerX, centerY, 3, 0x5E72E4, 1);
-            particle.setDepth(200);
-            
-            this.tweens.add({
-                targets: particle,
-                x: centerX + Math.cos(angle) * distance,
-                y: centerY + Math.sin(angle) * distance,
-                alpha: 0,
-                duration: 800,
-                ease: 'Quad.easeOut',
-                onComplete: () => particle.destroy()
-            });
-        }
-        
-        // Flash screen
-        const flash = this.add.rectangle(
-            centerX, centerY,
-            WIDTH * 2, this.BLOCK_SIZE * this.GRID_HEIGHT * 2,
-            0xFFFFFF, 0.3
-        );
-        flash.setDepth(199);
-        this.tweens.add({
-            targets: flash,
-            alpha: 0,
-            duration: 300,
-            onComplete: () => flash.destroy()
+        menuBtn.on('pointerdown', () => {
+            this.scene.stop();
+            this.scene.start('MenuScene');
         });
     }
 }
@@ -693,10 +872,10 @@ class GameScene extends Phaser.Scene {
 const config = {
     type: Phaser.AUTO,
     parent: 'game-container',
-    width: 580,
+    width: 700,
     height: 800,
-    backgroundColor: '#1a1a2e',
-    scene: [GameScene],
+    backgroundColor: '#0a0a0f',
+    scene: [MenuScene, GameScene],
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH
