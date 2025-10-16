@@ -300,6 +300,44 @@ class GameScene extends Phaser.Scene {
         this.moveTimer = { left: 0, right: 0, up: 0, down: 0 };
         this.moveDelay = 150; // ms between moves
 
+        // Mobile touch controls
+        this.isDragging = false;
+        this.dragStartX = 0;
+        this.dragStartY = 0;
+        
+        // Make game area interactive for touch
+        this.input.on('pointerdown', (pointer) => {
+            if (!this.gameOver) {
+                this.isDragging = true;
+                this.dragStartX = pointer.x;
+                this.dragStartY = pointer.y;
+            }
+        });
+
+        this.input.on('pointermove', (pointer) => {
+            if (this.isDragging && !this.gameOver) {
+                const deltaX = pointer.x - this.dragStartX;
+                const deltaY = pointer.y - this.dragStartY;
+                
+                // Move claw based on drag
+                if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
+                    this.moveClaw(deltaX * 0.5, deltaY * 0.5);
+                    
+                    // Update grabbed piece position
+                    if (this.grabbedPiece) {
+                        this.syncGrabbedPieceToClaw();
+                    }
+                    
+                    this.dragStartX = pointer.x;
+                    this.dragStartY = pointer.y;
+                }
+            }
+        });
+
+        this.input.on('pointerup', () => {
+            this.isDragging = false;
+        });
+
         // UI
         this.createUI();
 
@@ -653,6 +691,17 @@ class GameScene extends Phaser.Scene {
         if (this.grabbedPiece) {
             this.checkExitBox();
         }
+        
+        // Update mobile button state
+        if (this.mobileGrabBtn && this.mobileGrabLabel) {
+            if (this.grabbedPiece) {
+                this.mobileGrabLabel.setText('DROP');
+                this.mobileGrabBtn.setFillStyle(0x6600FF, 0.85);
+            } else {
+                this.mobileGrabLabel.setText('GRAB');
+                this.mobileGrabBtn.setFillStyle(0xFF6600, 0.85);
+            }
+        }
     }
 
     moveClaw(dx, dy) {
@@ -937,8 +986,11 @@ const config = {
     backgroundColor: '#0a0a0f',
     scene: [MenuScene, GameScene],
     scale: {
-        mode: Phaser.Scale.NONE,  // Don't auto-scale
-        autoCenter: Phaser.Scale.CENTER_BOTH
+        mode: Phaser.Scale.FIT,  // Auto-scale for mobile
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        parent: 'game-container',
+        width: 700,
+        height: 800
     }
 };
 
