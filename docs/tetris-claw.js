@@ -280,13 +280,15 @@ class GameScene extends Phaser.Scene {
         this.score = 0;
         this.level = 1;
         this.spawnTimer = 0;
-        this.spawnInterval = 5000;
+        this.spawnInterval = 5000;  // Initial spawn interval
+        this.minSpawnInterval = 2000;  // Minimum spawn interval (max difficulty)
         this.gameOver = false;
+        this.gameTime = 0;  // Track total game time
         
         // Claw machine automation
         this.isAutoMoving = false;
         this.autoMovePhase = 0; // 0: idle, 1: move to top, 2: move to right, 3: release
-        this.autoMoveSpeed = 4;
+        this.autoMoveSpeed = 5;  // Increased from 4 to 5 (1.25x faster)
 
         // Create claw
         this.createClaw();
@@ -344,7 +346,7 @@ class GameScene extends Phaser.Scene {
                 
                 // Move claw based on drag
                 if (Math.abs(deltaX) > 5 || Math.abs(deltaY) > 5) {
-                    this.moveClaw(deltaX * 0.5, deltaY * 0.5);
+                    this.moveClaw(deltaX * 0.625, deltaY * 0.625);  // Increased from 0.5 to 0.625 (1.25x faster)
                     
                     // Update grabbed piece position
                     if (this.grabbedPiece) {
@@ -661,6 +663,18 @@ class GameScene extends Phaser.Scene {
     update(time, delta) {
         if (this.gameOver) return;
 
+        // Track game time and increase difficulty
+        this.gameTime += delta;
+        
+        // Decrease spawn interval over time (faster spawning)
+        // Every 30 seconds, reduce interval by 200ms until minimum
+        const secondsElapsed = Math.floor(this.gameTime / 1000);
+        const difficultyLevel = Math.floor(secondsElapsed / 30);
+        this.spawnInterval = Math.max(
+            this.minSpawnInterval,
+            5000 - (difficultyLevel * 200)
+        );
+
         // Spawn timer
         this.spawnTimer += delta;
         if (this.spawnTimer >= this.spawnInterval) {
@@ -685,7 +699,7 @@ class GameScene extends Phaser.Scene {
         }
 
         // WASD controls - smooth continuous movement
-        const moveSpeed = 3;
+        const moveSpeed = 3.75;  // Increased from 3 to 3.75 (1.25x faster)
         
         // A - Move LEFT
         if (this.wasd.left.isDown && !this.isAutoMoving) {
