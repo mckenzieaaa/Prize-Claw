@@ -284,8 +284,8 @@ class GameScene extends Phaser.Scene {
         
         // Claw machine automation
         this.isAutoMoving = false;
-        this.autoMoveTarget = null;
-        this.autoMoveSpeed = 5;
+        this.autoMovePhase = 0; // 0: idle, 1: move to top, 2: move to right, 3: release
+        this.autoMoveSpeed = 4;
 
         // Create claw
         this.createClaw();
@@ -441,7 +441,7 @@ class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(201);
 
         // Instructions (bottom center)
-        this.instructionText = this.add.text(350, 740, 'Move Claw & Grab - Auto delivers to EXIT!  •  PC: WASD+SPACE  Mobile: Drag+DoubleTap', {
+        this.instructionText = this.add.text(350, 740, 'Grab blocks - Claw moves to top-right & drops!  •  PC: WASD+SPACE  Mobile: Drag+DoubleTap', {
             fontSize: '12px',
             color: '#AABBCC',
             fontStyle: 'bold'
@@ -746,42 +746,126 @@ class GameScene extends Phaser.Scene {
     autoMoveToExit() {
         if (!this.grabbedPiece) {
             this.isAutoMoving = false;
+            this.autoMovePhase = 0;
             return;
         }
         
-        // Target: center of exit box
-        const targetX = this.exitBox.x + this.exitBox.width / 2;
-        const targetY = this.exitBox.y + this.exitBox.height / 2;
-        
-        const dx = targetX - this.claw.x;
-        const dy = targetY - this.claw.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-        
-        if (distance < 10) {
-            // Reached exit box - drop the piece
-            this.dropPieceIntoExit();
-        } else {
-            // Move towards exit
-            const moveX = (dx / distance) * this.autoMoveSpeed;
-            const moveY = (dy / distance) * this.autoMoveSpeed;
+        // Phase 1: Move to top
+        if (this.autoMovePhase === 1) {
+            const targetY = this.clawBounds.minY + 20;
+            const dy = targetY - this.claw.y;
             
-            this.moveClaw(moveX, moveY);
-            this.syncGrabbedPieceToClaw();
+            if (Math.abs(dy) < 5) {
+                // Reached top, move to phase 2
+                this.autoMovePhase = 2;
+            } else {
+                // Move upward
+                const moveY = dy > 0 ? this.autoMoveSpeed : -this.autoMoveSpeed;
+                this.moveClaw(0, moveY);
+                this.syncGrabbedPieceToClaw();
+            }
+        }
+        // Phase 2: Move to right edge
+        else if (this.autoMovePhase === 2) {
+            const targetX = this.clawBounds.maxX - 30;
+            const dx = targetX - this.claw.x;
+            
+            if (Math.abs(dx) < 5) {
+                // Reached right edge, release piece
+                this.autoMovePhase = 3;
+                this.releasePieceFromTop();
+            } else {
+                // Move right
+                const moveX = dx > 0 ? this.autoMoveSpeed : -this.autoMoveSpeed;
+                this.moveClaw(moveX, 0);
+                this.syncGrabbedPieceToClaw();
+            }
         }
     }
-
-    dropPieceIntoExit() {
+    
+    releasePieceFromTop() {
         if (!this.grabbedPiece) return;
         
+        // Flash effect on piece before release
+        this.tweens.add({
+            targets: this.grabbedPiece.container,
+            alpha: 0.7,
+            scaleX: 0.95,
+            scaleY: 0.95,
+            duration: 150,
+            yoyo: true,
+            onComplete: () => {
+                // Remove glow
+                this.grabbedPiece.blocks.forEach(block => {
+                    block.clearTint();
+                });
+                
+                // Release and let gravity take over
+                this.grabbedPiece.grabbed = false;
+                this.grabbedPiece.container.setDepth(10);
+                
+                // Enable collision detection when it reaches exit box
+                this.time.delayedCall(100, () => {
+                    this.checkFallingPieceInExit();
+                });
+                
+                this.grabbedPiece = null;
+                this.isAutoMoving = false;
+                this.autoMovePhase = 0;
+            }
+        });
+        
+        // Claw release animation
+        this.tweens.add({
+            targets: this.clawSprite,
+            scaleX: 1.1,
+            scaleY: 0.9,
+            duration: 150,
+            yoyo: true
+        });
+    }
+    
+    checkFallingPieceInExit() {
+        // Monitor pieces falling into exit box
+        this.checkExitTimer = this.time.addEvent({
+            delay: 100,
+            callback: () => {
+                this.tetrominoes.forEach(tetromino => {
+                    if (tetromino.grabbed) return;
+                    
+                    const bounds = tetromino.container.getBounds();
+                    const exitBounds = new Phaser.Geom.Rectangle(
+                        this.exitBox.x,
+                        this.exitBox.y,
+                        this.exitBox.width,
+                        this.exitBox.height
+                    );
+                    
+                    // Check if piece center is in exit box
+                    if (Phaser.Geom.Rectangle.Contains(exitBounds, bounds.centerX, bounds.centerY)) {
+                        this.scorePieceInExit(tetromino);
+                        if (this.checkExitTimer) {
+                            this.checkExitTimer.remove();
+                        }
+                    }
+                });
+            },
+            loop: true
+        });
+    }
+    
+    scorePieceInExit(tetromino) {
+        if (!tetromino || !tetromino.container) return;
+        
         // Particle explosion
-        const centerX = this.grabbedPiece.container.x;
-        const centerY = this.grabbedPiece.container.y;
+        const centerX = tetromino.container.x;
+        const centerY = tetromino.container.y;
         
         for (let i = 0; i < 30; i++) {
             const angle = (Math.PI * 2 * i) / 30;
             const particle = this.add.circle(
                 centerX, centerY, 4,
-                TETROMINO_SHAPES[this.grabbedPiece.type].color, 0.9
+                TETROMINO_SHAPES[tetromino.type].color, 0.9
             );
             particle.setDepth(100);
             
@@ -797,25 +881,32 @@ class GameScene extends Phaser.Scene {
         }
 
         // Destroy piece
-        this.grabbedPiece.container.destroy();
-        this.tetrominoes = this.tetrominoes.filter(t => t !== this.grabbedPiece);
+        tetromino.container.destroy();
+        this.tetrominoes = this.tetrominoes.filter(t => t !== tetromino);
         
         // Score
         this.score += 100;
         this.scoreText.setText(this.score.toString());
         
-        // Reset state
-        this.grabbedPiece = null;
-        this.isAutoMoving = false;
-        
         // Flash exit box
         this.tweens.add({
-            targets: this.exitBox,
-            alpha: 0.5,
-            duration: 200,
-            yoyo: true
+            targets: this.add.rectangle(
+                this.exitBox.x + this.exitBox.width/2,
+                this.exitBox.y + this.exitBox.height/2,
+                this.exitBox.width,
+                this.exitBox.height,
+                0x32C832,
+                0.5
+            ).setDepth(100),
+            alpha: 0,
+            duration: 300,
+            onComplete: (tween, targets) => {
+                targets[0].destroy();
+            }
         });
     }
+
+
 
     moveClaw(dx, dy) {
         this.claw.x = Phaser.Math.Clamp(
@@ -889,8 +980,9 @@ class GameScene extends Phaser.Scene {
             duration: 200,
             ease: 'Back.easeOut',
             onComplete: () => {
-                // Start auto-move to exit after grabbing
+                // Start auto-move: Phase 1 = move to top
                 this.isAutoMoving = true;
+                this.autoMovePhase = 1;
             }
         });
         this.grabbedPiece.container.setDepth(90);
