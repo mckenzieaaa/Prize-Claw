@@ -62,9 +62,9 @@ class MenuScene extends Phaser.Scene {
 
         // How to play
         const instructions = [
-            'PC: WASD + SPACE to grab',
-            'Mobile: Drag + Double Tap to grab',
-            'Drop to LEFT EXIT box',
+            'Move claw and grab blocks',
+            'Auto delivers to EXIT box',
+            'Blocks fall with gravity',
             'Clear before RED LINE!'
         ];
 
@@ -235,12 +235,12 @@ class GameScene extends Phaser.Scene {
             repeat: -1
         });
 
-        // Exit box (left side, easy to access)
+        // Exit box (bottom right corner)
         this.exitBox = {
-            x: 30,
-            y: OFFSET_Y + HEIGHT - 180,
-            width: 140,
-            height: 160
+            x: OFFSET_X + WIDTH - 140,
+            y: OFFSET_Y + HEIGHT - 160,
+            width: 130,
+            height: 150
         };
         
         const exitBg = this.add.rectangle(
@@ -255,20 +255,20 @@ class GameScene extends Phaser.Scene {
         exitBg.setDepth(5);
         
         this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 40, 'EXIT', {
-            fontSize: '32px',
+            fontSize: '28px',
             color: '#FFFFFF',
             fontStyle: 'bold',
             stroke: '#32C832',
             strokeThickness: 3
         }).setOrigin(0.5).setDepth(6);
         
-        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 90, '✓', {
-            fontSize: '48px',
+        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 85, '✓', {
+            fontSize: '40px',
             color: '#32C832'
         }).setOrigin(0.5).setDepth(6);
         
-        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 135, 'Drop Here', {
-            fontSize: '16px',
+        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 125, 'Drop Zone', {
+            fontSize: '14px',
             color: '#AABBCC'
         }).setOrigin(0.5).setDepth(6);
 
@@ -281,6 +281,11 @@ class GameScene extends Phaser.Scene {
         this.spawnTimer = 0;
         this.spawnInterval = 5000;
         this.gameOver = false;
+        
+        // Claw machine automation
+        this.isAutoMoving = false;
+        this.autoMoveTarget = null;
+        this.autoMoveSpeed = 5;
 
         // Create claw
         this.createClaw();
@@ -403,9 +408,9 @@ class GameScene extends Phaser.Scene {
         this.clawSprite = this.add.image(0, 0, 'claw_texture');
         this.claw.add(this.clawSprite);
 
-        // Claw bounds - expand to include EXIT box on the left
+        // Claw bounds - full game area
         this.clawBounds = {
-            minX: 50,  // Allow claw to reach left EXIT box
+            minX: this.offsetX + 15,
             maxX: this.offsetX + WIDTH - 15,
             minY: this.offsetY + 15,
             maxY: this.offsetY + HEIGHT - 15
@@ -436,8 +441,8 @@ class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(201);
 
         // Instructions (bottom center)
-        this.instructionText = this.add.text(350, 740, 'PC: WASD + SPACE  •  Mobile: Drag + Double Tap  •  Drop to LEFT EXIT', {
-            fontSize: '13px',
+        this.instructionText = this.add.text(350, 740, 'Move Claw & Grab - Auto delivers to EXIT!  •  PC: WASD+SPACE  Mobile: Drag+DoubleTap', {
+            fontSize: '12px',
             color: '#AABBCC',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(201);
@@ -643,6 +648,15 @@ class GameScene extends Phaser.Scene {
             this.spawnTetromino();
         }
 
+        // Apply gravity to pieces not grabbed
+        this.applyGravity(delta);
+
+        // Auto-move claw to exit after grabbing
+        if (this.isAutoMoving && this.grabbedPiece) {
+            this.autoMoveToExit();
+            return; // Skip manual control during auto movement
+        }
+
         // Update timers
         for (let key in this.moveTimer) {
             if (this.moveTimer[key] > 0) {
@@ -654,60 +668,153 @@ class GameScene extends Phaser.Scene {
         const moveSpeed = 3;
         
         // A - Move LEFT
-        if (this.wasd.left.isDown) {
+        if (this.wasd.left.isDown && !this.isAutoMoving) {
+            this.moveClaw(-moveSpeed, 0);
             if (this.grabbedPiece) {
-                // Move grabbed piece and claw together
-                this.moveClaw(-moveSpeed, 0);
                 this.syncGrabbedPieceToClaw();
-            } else {
-                // Just move claw
-                this.moveClaw(-moveSpeed, 0);
             }
         }
         
         // D - Move RIGHT
-        if (this.wasd.right.isDown) {
+        if (this.wasd.right.isDown && !this.isAutoMoving) {
+            this.moveClaw(moveSpeed, 0);
             if (this.grabbedPiece) {
-                this.moveClaw(moveSpeed, 0);
                 this.syncGrabbedPieceToClaw();
-            } else {
-                this.moveClaw(moveSpeed, 0);
             }
         }
         
         // W - Move UP
-        if (this.wasd.up.isDown) {
+        if (this.wasd.up.isDown && !this.isAutoMoving) {
+            this.moveClaw(0, -moveSpeed);
             if (this.grabbedPiece) {
-                this.moveClaw(0, -moveSpeed);
                 this.syncGrabbedPieceToClaw();
-            } else {
-                this.moveClaw(0, -moveSpeed);
             }
         }
         
         // S - Move DOWN
-        if (this.wasd.down.isDown) {
+        if (this.wasd.down.isDown && !this.isAutoMoving) {
+            this.moveClaw(0, moveSpeed);
             if (this.grabbedPiece) {
-                this.moveClaw(0, moveSpeed);
                 this.syncGrabbedPieceToClaw();
-            } else {
-                this.moveClaw(0, moveSpeed);
             }
         }
 
-        // Grab/Release with Space
-        if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
-            if (this.grabbedPiece) {
-                this.releasePiece();
-            } else {
+        // Grab with Space (auto-moves to exit after grabbing)
+        if (Phaser.Input.Keyboard.JustDown(this.spaceKey) && !this.isAutoMoving) {
+            if (!this.grabbedPiece) {
                 this.tryGrabAtClaw();
             }
         }
+    }
 
-        // Check if in exit box
-        if (this.grabbedPiece) {
-            this.checkExitBox();
+    applyGravity(delta) {
+        const gravity = 0.5; // pixels per frame
+        
+        this.tetrominoes.forEach(tetromino => {
+            if (tetromino.grabbed) return; // Skip grabbed pieces
+            
+            // Check if can fall
+            const canFall = tetromino.gridPositions.every(pos => {
+                const newY = pos.y + 1;
+                if (newY >= this.GRID_HEIGHT) return false;
+                const occupant = this.gridData[newY][pos.x];
+                return !occupant || occupant === tetromino;
+            });
+            
+            if (canFall) {
+                // Move down
+                tetromino.container.y += gravity;
+                
+                // Check if crossed grid boundary
+                const avgY = tetromino.gridPositions.reduce((sum, p) => sum + p.y, 0) / tetromino.gridPositions.length;
+                const containerGridY = Math.round((tetromino.container.y - this.offsetY) / this.BLOCK_SIZE);
+                
+                if (containerGridY > avgY) {
+                    // Update grid positions
+                    tetromino.gridPositions.forEach(pos => {
+                        this.gridData[pos.y][pos.x] = null;
+                        pos.y++;
+                        if (pos.y < this.GRID_HEIGHT) {
+                            this.gridData[pos.y][pos.x] = tetromino;
+                        }
+                    });
+                }
+            }
+        });
+    }
+
+    autoMoveToExit() {
+        if (!this.grabbedPiece) {
+            this.isAutoMoving = false;
+            return;
         }
+        
+        // Target: center of exit box
+        const targetX = this.exitBox.x + this.exitBox.width / 2;
+        const targetY = this.exitBox.y + this.exitBox.height / 2;
+        
+        const dx = targetX - this.claw.x;
+        const dy = targetY - this.claw.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < 10) {
+            // Reached exit box - drop the piece
+            this.dropPieceIntoExit();
+        } else {
+            // Move towards exit
+            const moveX = (dx / distance) * this.autoMoveSpeed;
+            const moveY = (dy / distance) * this.autoMoveSpeed;
+            
+            this.moveClaw(moveX, moveY);
+            this.syncGrabbedPieceToClaw();
+        }
+    }
+
+    dropPieceIntoExit() {
+        if (!this.grabbedPiece) return;
+        
+        // Particle explosion
+        const centerX = this.grabbedPiece.container.x;
+        const centerY = this.grabbedPiece.container.y;
+        
+        for (let i = 0; i < 30; i++) {
+            const angle = (Math.PI * 2 * i) / 30;
+            const particle = this.add.circle(
+                centerX, centerY, 4,
+                TETROMINO_SHAPES[this.grabbedPiece.type].color, 0.9
+            );
+            particle.setDepth(100);
+            
+            this.tweens.add({
+                targets: particle,
+                x: centerX + Math.cos(angle) * 150,
+                y: centerY + Math.sin(angle) * 150,
+                alpha: 0,
+                duration: 700,
+                ease: 'Quad.easeOut',
+                onComplete: () => particle.destroy()
+            });
+        }
+
+        // Destroy piece
+        this.grabbedPiece.container.destroy();
+        this.tetrominoes = this.tetrominoes.filter(t => t !== this.grabbedPiece);
+        
+        // Score
+        this.score += 100;
+        this.scoreText.setText(this.score.toString());
+        
+        // Reset state
+        this.grabbedPiece = null;
+        this.isAutoMoving = false;
+        
+        // Flash exit box
+        this.tweens.add({
+            targets: this.exitBox,
+            alpha: 0.5,
+            duration: 200,
+            yoyo: true
+        });
     }
 
     moveClaw(dx, dy) {
@@ -780,7 +887,11 @@ class GameScene extends Phaser.Scene {
             scaleX: 1.1,
             scaleY: 1.1,
             duration: 200,
-            ease: 'Back.easeOut'
+            ease: 'Back.easeOut',
+            onComplete: () => {
+                // Start auto-move to exit after grabbing
+                this.isAutoMoving = true;
+            }
         });
         this.grabbedPiece.container.setDepth(90);
 
