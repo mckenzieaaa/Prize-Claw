@@ -832,6 +832,25 @@ class GameScene extends Phaser.Scene {
                     block.clearTint();
                 });
                 
+                // Update grid positions based on current container position
+                const containerX = this.grabbedPiece.container.x;
+                const containerY = this.grabbedPiece.container.y;
+                const gridX = Math.round((containerX - this.offsetX) / this.BLOCK_SIZE);
+                const gridY = Math.round((containerY - this.offsetY) / this.BLOCK_SIZE);
+                
+                // Update each block's grid position relative to container
+                this.grabbedPiece.gridPositions.forEach((pos, index) => {
+                    const blockData = TETROMINO_SHAPES[this.grabbedPiece.type].blocks[index];
+                    pos.x = gridX + blockData.x;
+                    pos.y = gridY + blockData.y;
+                    
+                    // Mark in grid if within bounds
+                    if (pos.x >= 0 && pos.x < this.GRID_WIDTH && 
+                        pos.y >= 0 && pos.y < this.GRID_HEIGHT) {
+                        this.gridData[pos.y][pos.x] = this.grabbedPiece;
+                    }
+                });
+                
                 // Release and let gravity take over
                 this.grabbedPiece.grabbed = false;
                 this.grabbedPiece.container.setDepth(10);
