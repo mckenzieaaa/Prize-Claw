@@ -892,8 +892,9 @@ class GameScene extends Phaser.Scene {
                 // Update each block's grid position relative to container
                 releasedPiece.gridPositions.forEach((pos, index) => {
                     const blockData = TETROMINO_SHAPES[releasedPiece.type].blocks[index];
-                    pos.x = gridX + blockData.x;
-                    pos.y = gridY + blockData.y;
+                    // blockData is [x, y] array, not {x, y} object
+                    pos.x = gridX + blockData[0];
+                    pos.y = gridY + blockData[1];
                     
                     console.log(`  Block ${index}: grid(${pos.x}, ${pos.y})`);
                     
