@@ -770,11 +770,15 @@ class GameScene extends Phaser.Scene {
                     console.log(`      Hit bottom (in game area)!`);
                     break;
                 }
-                const occupant = this.gridData[newY][pos.x];
-                if (occupant && occupant !== tetromino) {
-                    canFall = false;
-                    console.log(`      Hit another piece!`);
-                    break;
+                
+                // Check collision with other pieces (safe array access)
+                if (pos.x >= 0 && pos.x < this.GRID_WIDTH) {
+                    const occupant = this.gridData[newY][pos.x];
+                    if (occupant && occupant !== tetromino) {
+                        canFall = false;
+                        console.log(`      Hit another piece!`);
+                        break;
+                    }
                 }
             }
             
