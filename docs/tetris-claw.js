@@ -735,16 +735,32 @@ class GameScene extends Phaser.Scene {
         this.tetrominoes.forEach(tetromino => {
             if (tetromino.grabbed) return; // Skip grabbed pieces
             
+            // Check if piece is below screen (fell off)
+            const bottomY = this.offsetY + this.GRID_HEIGHT * this.BLOCK_SIZE;
+            if (tetromino.container.y > bottomY + 100) {
+                return; // Will be cleaned up by checkFallingPieceInExit
+            }
+            
             // Check if can fall (check each block position)
             let canFall = true;
             for (let pos of tetromino.gridPositions) {
                 const newY = pos.y + 1;
-                // Hit bottom
+                
+                // If outside game area horizontally (like in EXIT zone), just check bottom
+                if (pos.x < 0 || pos.x >= this.GRID_WIDTH) {
+                    // Check if hit bottom of screen
+                    if (newY >= this.GRID_HEIGHT) {
+                        canFall = false;
+                        break;
+                    }
+                    continue; // No grid collision check needed outside game area
+                }
+                
+                // Normal grid collision check
                 if (newY >= this.GRID_HEIGHT) {
                     canFall = false;
                     break;
                 }
-                // Hit another piece
                 const occupant = this.gridData[newY][pos.x];
                 if (occupant && occupant !== tetromino) {
                     canFall = false;
@@ -753,9 +769,12 @@ class GameScene extends Phaser.Scene {
             }
             
             if (canFall) {
-                // Clear old positions
+                // Clear old positions (only if in grid)
                 tetromino.gridPositions.forEach(pos => {
-                    this.gridData[pos.y][pos.x] = null;
+                    if (pos.x >= 0 && pos.x < this.GRID_WIDTH && 
+                        pos.y >= 0 && pos.y < this.GRID_HEIGHT) {
+                        this.gridData[pos.y][pos.x] = null;
+                    }
                 });
                 
                 // Update positions
@@ -763,9 +782,12 @@ class GameScene extends Phaser.Scene {
                     pos.y++;
                 });
                 
-                // Set new positions
+                // Set new positions (only if in grid)
                 tetromino.gridPositions.forEach(pos => {
-                    this.gridData[pos.y][pos.x] = tetromino;
+                    if (pos.x >= 0 && pos.x < this.GRID_WIDTH && 
+                        pos.y >= 0 && pos.y < this.GRID_HEIGHT) {
+                        this.gridData[pos.y][pos.x] = tetromino;
+                    }
                 });
                 
                 // Move container visually
@@ -832,28 +854,36 @@ class GameScene extends Phaser.Scene {
                     block.clearTint();
                 });
                 
+                // Store reference before clearing
+                const releasedPiece = this.grabbedPiece;
+                
                 // Update grid positions based on current container position
-                const containerX = this.grabbedPiece.container.x;
-                const containerY = this.grabbedPiece.container.y;
+                const containerX = releasedPiece.container.x;
+                const containerY = releasedPiece.container.y;
                 const gridX = Math.round((containerX - this.offsetX) / this.BLOCK_SIZE);
                 const gridY = Math.round((containerY - this.offsetY) / this.BLOCK_SIZE);
                 
+                console.log(`Releasing piece at grid(${gridX}, ${gridY}), pixel(${containerX}, ${containerY})`);
+                console.log(`EXIT box is outside game area at x:${this.exitBox.x}`);
+                
                 // Update each block's grid position relative to container
-                this.grabbedPiece.gridPositions.forEach((pos, index) => {
-                    const blockData = TETROMINO_SHAPES[this.grabbedPiece.type].blocks[index];
+                releasedPiece.gridPositions.forEach((pos, index) => {
+                    const blockData = TETROMINO_SHAPES[releasedPiece.type].blocks[index];
                     pos.x = gridX + blockData.x;
                     pos.y = gridY + blockData.y;
+                    
+                    console.log(`  Block ${index}: grid(${pos.x}, ${pos.y})`);
                     
                     // Mark in grid if within bounds
                     if (pos.x >= 0 && pos.x < this.GRID_WIDTH && 
                         pos.y >= 0 && pos.y < this.GRID_HEIGHT) {
-                        this.gridData[pos.y][pos.x] = this.grabbedPiece;
+                        this.gridData[pos.y][pos.x] = releasedPiece;
                     }
                 });
                 
                 // Release and let gravity take over
-                this.grabbedPiece.grabbed = false;
-                this.grabbedPiece.container.setDepth(10);
+                releasedPiece.grabbed = false;
+                releasedPiece.container.setDepth(10);
                 
                 // Enable collision detection when it reaches exit box
                 this.time.delayedCall(100, () => {
