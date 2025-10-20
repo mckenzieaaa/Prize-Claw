@@ -725,37 +725,51 @@ class GameScene extends Phaser.Scene {
     }
 
     applyGravity(delta) {
-        const gravity = 0.5; // pixels per frame
+        if (!this.gravityTimer) this.gravityTimer = 0;
+        this.gravityTimer += delta;
+        
+        // Apply gravity every 100ms for smooth falling
+        if (this.gravityTimer < 100) return;
+        this.gravityTimer = 0;
         
         this.tetrominoes.forEach(tetromino => {
             if (tetromino.grabbed) return; // Skip grabbed pieces
             
-            // Check if can fall
-            const canFall = tetromino.gridPositions.every(pos => {
+            // Check if can fall (check each block position)
+            let canFall = true;
+            for (let pos of tetromino.gridPositions) {
                 const newY = pos.y + 1;
-                if (newY >= this.GRID_HEIGHT) return false;
+                // Hit bottom
+                if (newY >= this.GRID_HEIGHT) {
+                    canFall = false;
+                    break;
+                }
+                // Hit another piece
                 const occupant = this.gridData[newY][pos.x];
-                return !occupant || occupant === tetromino;
-            });
+                if (occupant && occupant !== tetromino) {
+                    canFall = false;
+                    break;
+                }
+            }
             
             if (canFall) {
-                // Move down
-                tetromino.container.y += gravity;
+                // Clear old positions
+                tetromino.gridPositions.forEach(pos => {
+                    this.gridData[pos.y][pos.x] = null;
+                });
                 
-                // Check if crossed grid boundary
-                const avgY = tetromino.gridPositions.reduce((sum, p) => sum + p.y, 0) / tetromino.gridPositions.length;
-                const containerGridY = Math.round((tetromino.container.y - this.offsetY) / this.BLOCK_SIZE);
+                // Update positions
+                tetromino.gridPositions.forEach(pos => {
+                    pos.y++;
+                });
                 
-                if (containerGridY > avgY) {
-                    // Update grid positions
-                    tetromino.gridPositions.forEach(pos => {
-                        this.gridData[pos.y][pos.x] = null;
-                        pos.y++;
-                        if (pos.y < this.GRID_HEIGHT) {
-                            this.gridData[pos.y][pos.x] = tetromino;
-                        }
-                    });
-                }
+                // Set new positions
+                tetromino.gridPositions.forEach(pos => {
+                    this.gridData[pos.y][pos.x] = tetromino;
+                });
+                
+                // Move container visually
+                tetromino.container.y += this.BLOCK_SIZE;
             }
         });
     }
