@@ -424,6 +424,9 @@ class GameScene extends Phaser.Scene {
             minY: this.offsetY + 15,
             maxY: this.offsetY + HEIGHT - 15
         };
+        
+        console.log(`Claw bounds: normal maxX=${this.clawBounds.maxX}, extended maxX=${this.clawExtendedBounds.maxX}`);
+        console.log(`EXIT box at x=${this.exitBox.x}, width=${this.exitBox.width}`);
 
         // Claw grab zone (collision area)
         this.clawGrabZone = this.add.rectangle(0, 18, 30, 30, 0xFF0000, 0);
@@ -841,8 +844,11 @@ class GameScene extends Phaser.Scene {
             const targetX = this.exitBox.x + this.exitBox.width / 2;
             const dx = targetX - this.claw.x;
             
-            if (Math.abs(dx) < 5) {
+            console.log(`Phase 2: Moving to EXIT, claw.x=${this.claw.x}, targetX=${targetX}, dx=${dx}`);
+            
+            if (Math.abs(dx) < 10) {
                 // Reached EXIT position, release piece
+                console.log(`Reached EXIT! Releasing...`);
                 this.autoMovePhase = 3;
                 this.releasePieceFromTop();
             } else {
