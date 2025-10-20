@@ -732,7 +732,10 @@ class GameScene extends Phaser.Scene {
         if (this.gravityTimer < 100) return;
         this.gravityTimer = 0;
         
-        this.tetrominoes.forEach(tetromino => {
+        console.log(`=== Gravity check: ${this.tetrominoes.length} pieces ===`);
+        
+        this.tetrominoes.forEach((tetromino, idx) => {
+            console.log(`Piece ${idx}: grabbed=${tetromino.grabbed}, container.y=${tetromino.container.y}`);
             if (tetromino.grabbed) return; // Skip grabbed pieces
             
             // Check if piece is below screen (fell off)
@@ -743,14 +746,19 @@ class GameScene extends Phaser.Scene {
             
             // Check if can fall (check each block position)
             let canFall = true;
+            console.log(`  Checking fall: gridPos count=${tetromino.gridPositions.length}`);
+            
             for (let pos of tetromino.gridPositions) {
+                console.log(`    Block at grid(${pos.x}, ${pos.y})`);
                 const newY = pos.y + 1;
                 
                 // If outside game area horizontally (like in EXIT zone), just check bottom
                 if (pos.x < 0 || pos.x >= this.GRID_WIDTH) {
+                    console.log(`      Outside game area, newY=${newY}, GRID_HEIGHT=${this.GRID_HEIGHT}`);
                     // Check if hit bottom of screen
                     if (newY >= this.GRID_HEIGHT) {
                         canFall = false;
+                        console.log(`      Hit bottom!`);
                         break;
                     }
                     continue; // No grid collision check needed outside game area
@@ -759,14 +767,18 @@ class GameScene extends Phaser.Scene {
                 // Normal grid collision check
                 if (newY >= this.GRID_HEIGHT) {
                     canFall = false;
+                    console.log(`      Hit bottom (in game area)!`);
                     break;
                 }
                 const occupant = this.gridData[newY][pos.x];
                 if (occupant && occupant !== tetromino) {
                     canFall = false;
+                    console.log(`      Hit another piece!`);
                     break;
                 }
             }
+            
+            console.log(`  canFall=${canFall}`);
             
             if (canFall) {
                 // Clear old positions (only if in grid)
@@ -792,6 +804,7 @@ class GameScene extends Phaser.Scene {
                 
                 // Move container visually
                 tetromino.container.y += this.BLOCK_SIZE;
+                console.log(`  Moved down to y=${tetromino.container.y}`);
             }
         });
     }
