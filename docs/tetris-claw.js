@@ -376,16 +376,16 @@ class GameScene extends Phaser.Scene {
         const WIDTH = this.BLOCK_SIZE * this.GRID_WIDTH;
         const HEIGHT = this.BLOCK_SIZE * this.GRID_HEIGHT;
         
+        // Rope graphics (drawn dynamically)
+        this.ropeGraphics = this.add.graphics();
+        this.ropeGraphics.setDepth(99);
+        
         // Claw container
         this.claw = this.add.container(
             this.offsetX + WIDTH/2,
             this.offsetY + 60
         );
         this.claw.setDepth(100);
-
-        // Rope/chain
-        this.clawRope = this.add.rectangle(0, -30, 3, 30, 0x888888, 0.8);
-        this.claw.add(this.clawRope);
 
         // Claw arms (like grabber)
         const clawGraphics = this.add.graphics();
@@ -428,6 +428,14 @@ class GameScene extends Phaser.Scene {
         // Claw grab zone (collision area)
         this.clawGrabZone = this.add.rectangle(0, 18, 30, 30, 0xFF0000, 0);
         this.claw.add(this.clawGrabZone);
+        
+        // Initial rope draw
+        this.ropeGraphics.clear();
+        this.ropeGraphics.lineStyle(3, 0xFFD700, 0.8);
+        this.ropeGraphics.lineBetween(
+            this.claw.x, this.offsetY,
+            this.claw.x, this.claw.y - 15
+        );
     }
 
     createUI() {
