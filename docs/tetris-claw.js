@@ -475,78 +475,98 @@ class GameScene extends Phaser.Scene {
     
     createControlsPanel() {
         const panelX = 30;
-        const panelY = 200;
+        const panelY = 350;  // 移到更下方，不遮挡游戏区域
         const panelWidth = 140;
-        const panelHeight = 280;
+        const panelHeight = 340;  // 增加高度以容纳更好的布局
         
         // Panel background
-        const panel = this.add.rectangle(panelX, panelY, panelWidth, panelHeight, 0x1a1a2e, 0.85);
+        const panel = this.add.rectangle(panelX, panelY, panelWidth, panelHeight, 0x1a1a2e, 0.9);
         panel.setStrokeStyle(3, 0x5e72e4, 0.8);
         panel.setOrigin(0, 0);
         panel.setDepth(200);
         
         // Title
-        this.add.text(panelX + panelWidth/2, panelY + 20, 'CONTROLS', {
-            fontSize: '18px',
+        this.add.text(panelX + panelWidth/2, panelY + 25, '🎮 CONTROLS', {
+            fontSize: '16px',
             color: '#FFFFFF',
             fontStyle: 'bold',
             stroke: '#5e72e4',
             strokeThickness: 2
         }).setOrigin(0.5).setDepth(201);
         
-        // PC Controls
-        this.add.text(panelX + panelWidth/2, panelY + 50, 'PC:', {
+        // Divider line
+        const line1 = this.add.graphics();
+        line1.lineStyle(2, 0x5e72e4, 0.5);
+        line1.lineBetween(panelX + 15, panelY + 45, panelX + panelWidth - 15, panelY + 45);
+        line1.setDepth(201);
+        
+        // PC Controls Section
+        this.add.text(panelX + panelWidth/2, panelY + 65, '💻 PC', {
             fontSize: '14px',
             color: '#8899FF',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(201);
         
-        const pcControls = [
-            'W A S D',
-            'Move Claw',
-            '',
-            'SPACE',
-            'Grab Block'
-        ];
+        // WASD Keys
+        this.add.text(panelX + panelWidth/2, panelY + 90, '⌨️ W A S D', {
+            fontSize: '14px',
+            color: '#FFD700',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(201);
         
-        pcControls.forEach((text, index) => {
-            const fontSize = (index === 0 || index === 3) ? '13px' : '11px';
-            const color = (index === 0 || index === 3) ? '#FFDD88' : '#AABBCC';
-            const bold = (index === 0 || index === 3) ? 'bold' : 'normal';
-            
-            this.add.text(panelX + panelWidth/2, panelY + 70 + index * 20, text, {
-                fontSize: fontSize,
-                color: color,
-                fontStyle: bold
-            }).setOrigin(0.5).setDepth(201);
-        });
+        this.add.text(panelX + panelWidth/2, panelY + 110, 'Move Claw', {
+            fontSize: '11px',
+            color: '#AABBCC'
+        }).setOrigin(0.5).setDepth(201);
         
-        // Mobile Controls
-        this.add.text(panelX + panelWidth/2, panelY + 180, 'Mobile:', {
+        // Space Key
+        this.add.text(panelX + panelWidth/2, panelY + 140, '⌨️ SPACE', {
+            fontSize: '14px',
+            color: '#FFD700',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(201);
+        
+        this.add.text(panelX + panelWidth/2, panelY + 160, 'Grab Block', {
+            fontSize: '11px',
+            color: '#AABBCC'
+        }).setOrigin(0.5).setDepth(201);
+        
+        // Divider line
+        const line2 = this.add.graphics();
+        line2.lineStyle(2, 0x5e72e4, 0.5);
+        line2.lineBetween(panelX + 15, panelY + 185, panelX + panelWidth - 15, panelY + 185);
+        line2.setDepth(201);
+        
+        // Mobile Controls Section
+        this.add.text(panelX + panelWidth/2, panelY + 205, '📱 Mobile', {
             fontSize: '14px',
             color: '#8899FF',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(201);
         
-        const mobileControls = [
-            'Drag',
-            'Move Claw',
-            '',
-            'Double Tap',
-            'Grab Block'
-        ];
+        // Drag
+        this.add.text(panelX + panelWidth/2, panelY + 230, '👆 Drag', {
+            fontSize: '14px',
+            color: '#FFD700',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(201);
         
-        mobileControls.forEach((text, index) => {
-            const fontSize = (index === 0 || index === 3) ? '13px' : '11px';
-            const color = (index === 0 || index === 3) ? '#FFDD88' : '#AABBCC';
-            const bold = (index === 0 || index === 3) ? 'bold' : 'normal';
-            
-            this.add.text(panelX + panelWidth/2, panelY + 200 + index * 20, text, {
-                fontSize: fontSize,
-                color: color,
-                fontStyle: bold
-            }).setOrigin(0.5).setDepth(201);
-        });
+        this.add.text(panelX + panelWidth/2, panelY + 250, 'Move Claw', {
+            fontSize: '11px',
+            color: '#AABBCC'
+        }).setOrigin(0.5).setDepth(201);
+        
+        // Double Tap
+        this.add.text(panelX + panelWidth/2, panelY + 280, '👆👆 Double Tap', {
+            fontSize: '13px',
+            color: '#FFD700',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(201);
+        
+        this.add.text(panelX + panelWidth/2, panelY + 300, 'Grab Block', {
+            fontSize: '11px',
+            color: '#AABBCC'
+        }).setOrigin(0.5).setDepth(201);
     }
 
     createMenuButton() {
