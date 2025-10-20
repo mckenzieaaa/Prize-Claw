@@ -235,12 +235,12 @@ class GameScene extends Phaser.Scene {
             repeat: -1
         });
 
-        // Exit box (bottom right corner)
+        // Exit box (outside game area, far right side)
         this.exitBox = {
-            x: OFFSET_X + WIDTH - 140,
-            y: OFFSET_Y + HEIGHT - 160,
-            width: 130,
-            height: 150
+            x: OFFSET_X + WIDTH + 20,  // Outside game area
+            y: OFFSET_Y + HEIGHT - 180,
+            width: 140,
+            height: 170
         };
         
         const exitBg = this.add.rectangle(
@@ -254,22 +254,23 @@ class GameScene extends Phaser.Scene {
         exitBg.setStrokeStyle(5, 0x32C832, 0.95);
         exitBg.setDepth(5);
         
-        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 40, 'EXIT', {
-            fontSize: '28px',
+        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 45, 'EXIT', {
+            fontSize: '32px',
             color: '#FFFFFF',
             fontStyle: 'bold',
             stroke: '#32C832',
-            strokeThickness: 3
+            strokeThickness: 4
         }).setOrigin(0.5).setDepth(6);
         
-        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 85, '✓', {
-            fontSize: '40px',
+        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 95, '✓', {
+            fontSize: '48px',
             color: '#32C832'
         }).setOrigin(0.5).setDepth(6);
         
-        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 125, 'Drop Zone', {
-            fontSize: '14px',
-            color: '#AABBCC'
+        this.add.text(this.exitBox.x + this.exitBox.width/2, this.exitBox.y + 145, 'Drop Here', {
+            fontSize: '16px',
+            color: '#AABBCC',
+            fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(6);
 
         // Game state
@@ -408,10 +409,18 @@ class GameScene extends Phaser.Scene {
         this.clawSprite = this.add.image(0, 0, 'claw_texture');
         this.claw.add(this.clawSprite);
 
-        // Claw bounds - full game area
+        // Claw bounds - game area for normal play
         this.clawBounds = {
             minX: this.offsetX + 15,
             maxX: this.offsetX + WIDTH - 15,
+            minY: this.offsetY + 15,
+            maxY: this.offsetY + HEIGHT - 15
+        };
+        
+        // Extended bounds for auto-delivery (can go outside to EXIT)
+        this.clawExtendedBounds = {
+            minX: this.offsetX + 15,
+            maxX: this.exitBox.x + this.exitBox.width,  // Can reach EXIT box
             minY: this.offsetY + 15,
             maxY: this.offsetY + HEIGHT - 15
         };
@@ -759,25 +768,26 @@ class GameScene extends Phaser.Scene {
                 // Reached top, move to phase 2
                 this.autoMovePhase = 2;
             } else {
-                // Move upward
+                // Move upward (normal bounds)
                 const moveY = dy > 0 ? this.autoMoveSpeed : -this.autoMoveSpeed;
-                this.moveClaw(0, moveY);
+                this.moveClaw(0, moveY, false);
                 this.syncGrabbedPieceToClaw();
             }
         }
-        // Phase 2: Move to right edge
+        // Phase 2: Move to EXIT box (outside game area)
         else if (this.autoMovePhase === 2) {
-            const targetX = this.clawBounds.maxX - 30;
+            // Target: center of EXIT box (outside game area)
+            const targetX = this.exitBox.x + this.exitBox.width / 2;
             const dx = targetX - this.claw.x;
             
             if (Math.abs(dx) < 5) {
-                // Reached right edge, release piece
+                // Reached EXIT position, release piece
                 this.autoMovePhase = 3;
                 this.releasePieceFromTop();
             } else {
-                // Move right
+                // Move right (use extended bounds to go outside)
                 const moveX = dx > 0 ? this.autoMoveSpeed : -this.autoMoveSpeed;
-                this.moveClaw(moveX, 0);
+                this.moveClaw(moveX, 0, true);  // Use extended bounds!
                 this.syncGrabbedPieceToClaw();
             }
         }
@@ -908,16 +918,26 @@ class GameScene extends Phaser.Scene {
 
 
 
-    moveClaw(dx, dy) {
+    moveClaw(dx, dy, useExtendedBounds = false) {
+        const bounds = useExtendedBounds ? this.clawExtendedBounds : this.clawBounds;
+        
         this.claw.x = Phaser.Math.Clamp(
             this.claw.x + dx,
-            this.clawBounds.minX,
-            this.clawBounds.maxX
+            bounds.minX,
+            bounds.maxX
         );
         this.claw.y = Phaser.Math.Clamp(
             this.claw.y + dy,
-            this.clawBounds.minY,
-            this.clawBounds.maxY
+            bounds.minY,
+            bounds.maxY
+        );
+        
+        // Update rope
+        this.ropeGraphics.clear();
+        this.ropeGraphics.lineStyle(3, 0xFFD700, 0.8);
+        this.ropeGraphics.lineBetween(
+            this.claw.x, this.offsetY,
+            this.claw.x, this.claw.y - 15
         );
     }
 
