@@ -382,6 +382,7 @@ class PauseScene extends Phaser.Scene {
         resumeBtn.on('pointerover', () => resumeBtn.setFillStyle(0x4AE84A, 0.9));
         resumeBtn.on('pointerout', () => resumeBtn.setFillStyle(0x32C832, 0.8));
         resumeBtn.on('pointerdown', () => {
+            console.log('Resume button clicked');
             this.scene.stop();
             this.scene.resume(this.callingScene);
         });
@@ -400,6 +401,7 @@ class PauseScene extends Phaser.Scene {
         restartBtn.on('pointerover', () => restartBtn.setFillStyle(0xFFB820, 0.9));
         restartBtn.on('pointerout', () => restartBtn.setFillStyle(0xF0A000, 0.8));
         restartBtn.on('pointerdown', () => {
+            console.log('Restart button clicked');
             this.scene.stop();
             this.scene.stop(this.callingScene);
             if (this.callingScene === 'VSGameScene') {
@@ -423,6 +425,7 @@ class PauseScene extends Phaser.Scene {
         menuBtn.on('pointerover', () => menuBtn.setFillStyle(0xFF5588, 0.9));
         menuBtn.on('pointerout', () => menuBtn.setFillStyle(0xFF3366, 0.8));
         menuBtn.on('pointerdown', () => {
+            console.log('Main menu button clicked');
             this.scene.stop();
             this.scene.stop(this.callingScene);
             this.scene.start('ModeSelectScene');
@@ -1021,6 +1024,7 @@ class VSGameScene extends Phaser.Scene {
     }
     
     showPauseMenu() {
+        console.log('Showing pause menu for VSGameScene');
         this.scene.pause();
         this.scene.launch('PauseScene', { 
             scene: 'VSGameScene',
