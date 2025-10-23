@@ -739,26 +739,7 @@ class VSGameScene extends Phaser.Scene {
             player.spawnTimer = 0;
         }
         
-        // Update tetrominoes
-        player.tetrominoes.forEach(tetromino => {
-            if (tetromino.falling) {
-                tetromino.container.y += 0.5;
-                
-                tetromino.blocks.forEach(blockData => {
-                    const worldY = tetromino.container.y + blockData[1] * this.BLOCK_SIZE;
-                    const gridY = Math.floor(worldY / this.BLOCK_SIZE);
-                    const worldX = tetromino.container.x + blockData[0] * this.BLOCK_SIZE;
-                    const gridX = Math.floor((worldX - player.offsetX) / this.BLOCK_SIZE);
-                    
-                    if (gridY >= this.GRID_HEIGHT - 1 || 
-                        (gridY >= 0 && gridY < this.GRID_HEIGHT && 
-                         gridX >= 0 && gridX < this.GRID_WIDTH && 
-                         player.grid[gridY + 1] && player.grid[gridY + 1][gridX])) {
-                        this.landTetromino(player, tetromino);
-                    }
-                });
-            }
-        });
+        // No need to update tetrominoes falling - they spawn in place
         
         // Update claw
         this.updateClaw(player);
@@ -769,56 +750,75 @@ class VSGameScene extends Phaser.Scene {
         const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
         const shapeData = TETROMINO_SHAPES[randomShape];
         
-        const spawnX = player.offsetX + Math.random() * (this.GRID_WIDTH - 2) * this.BLOCK_SIZE;
+        // Random horizontal position
+        const startCol = Math.floor(Math.random() * (this.GRID_WIDTH - 3));
         
-        console.log(`Spawning ${randomShape} at x=${spawnX} (offsetX=${player.offsetX})`);
+        // Find the lowest empty row in this column range (from bottom up)
+        let spawnRow = this.GRID_HEIGHT - 1;
+        for (let col = startCol; col < Math.min(startCol + 4, this.GRID_WIDTH); col++) {
+            for (let row = this.GRID_HEIGHT - 1; row >= 0; row--) {
+                if (player.grid[row][col]) {
+                    spawnRow = Math.min(spawnRow, row - 1);
+                    break;
+                }
+            }
+        }
         
-        const container = this.add.container(spawnX, -this.BLOCK_SIZE * 2);
+        // Calculate bounds for centering
+        let minX = 999, maxX = -999, minY = 999, maxY = -999;
+        shapeData.blocks.forEach(([bx, by]) => {
+            minX = Math.min(minX, bx);
+            maxX = Math.max(maxX, bx);
+            minY = Math.min(minY, by);
+            maxY = Math.max(maxY, by);
+        });
+        
+        const centerOffsetX = (minX + maxX) / 2;
+        const centerOffsetY = (minY + maxY) / 2;
+        
+        // Spawn at bottom
+        const spawnX = player.offsetX + (startCol + centerOffsetX) * this.BLOCK_SIZE + this.BLOCK_SIZE/2;
+        const spawnY = (spawnRow - centerOffsetY) * this.BLOCK_SIZE + this.BLOCK_SIZE/2;
+        
+        console.log(`Spawning ${randomShape} at x=${spawnX}, y=${spawnY} (col=${startCol}, row=${spawnRow}, offsetX=${player.offsetX})`);
+        
+        const container = this.add.container(spawnX, spawnY);
         container.setDepth(10);
         
         const blocks = [];
+        const gridPositions = [];
+        
         shapeData.blocks.forEach(([x, y]) => {
             const block = this.add.image(
-                x * this.BLOCK_SIZE + this.BLOCK_SIZE/2,
-                y * this.BLOCK_SIZE + this.BLOCK_SIZE/2,
+                (x - centerOffsetX) * this.BLOCK_SIZE,
+                -(y - centerOffsetY) * this.BLOCK_SIZE,
                 `block_${randomShape}`
             );
             container.add(block);
             blocks.push([x, y]);
+            
+            // Immediately place in grid
+            const gridX = startCol + x;
+            const gridY = spawnRow - y;
+            
+            if (gridY >= 0 && gridY < this.GRID_HEIGHT && gridX >= 0 && gridX < this.GRID_WIDTH) {
+                player.grid[gridY][gridX] = true;
+                gridPositions.push([gridX, gridY]);
+            }
         });
         
         const tetromino = {
             container: container,
             blocks: blocks,
             shape: randomShape,
-            falling: true,
-            gridPositions: []
+            falling: false,  // Not falling, placed directly
+            gridPositions: gridPositions
         };
         
         player.tetrominoes.push(tetromino);
         console.log(`Player now has ${player.tetrominoes.length} tetrominoes`);
     }
     
-    landTetromino(player, tetromino) {
-        tetromino.falling = false;
-        console.log(`Tetromino landed at (${tetromino.container.x}, ${tetromino.container.y})`);
-        
-        tetromino.blocks.forEach(blockData => {
-            const worldX = tetromino.container.x + blockData[0] * this.BLOCK_SIZE;
-            const worldY = tetromino.container.y + blockData[1] * this.BLOCK_SIZE;
-            const gridX = Math.floor((worldX - player.offsetX) / this.BLOCK_SIZE);
-            const gridY = Math.floor(worldY / this.BLOCK_SIZE);
-            
-            if (gridY >= 0 && gridY < this.GRID_HEIGHT && 
-                gridX >= 0 && gridX < this.GRID_WIDTH) {
-                player.grid[gridY][gridX] = true;
-                tetromino.gridPositions.push([gridX, gridY]);
-            }
-        });
-        
-        console.log(`Tetromino has ${tetromino.gridPositions.length} grid positions`);
-        // No game over check in VS Mode - only time limit matters
-    }
     
     updateClaw(player) {
         if (player.clawState === 'idle' && !player.claw.autoMoving) {
@@ -896,7 +896,8 @@ class VSGameScene extends Phaser.Scene {
         console.log(`Player has ${player.tetrominoes.length} tetrominoes`);
         
         for (let tetromino of player.tetrominoes) {
-            if (!tetromino.falling && tetromino !== player.grabbedPiece) {
+            // All tetrominoes are grabbable now (no falling check needed)
+            if (tetromino !== player.grabbedPiece) {
                 const bounds = tetromino.container.getBounds();
                 
                 console.log(`Checking tetromino at (${tetromino.container.x}, ${tetromino.container.y}), bounds:`, bounds);
@@ -927,9 +928,6 @@ class VSGameScene extends Phaser.Scene {
                             player.grid[y][x] = null;
                         }
                     });
-                    
-                    // Mark as grabbed
-                    tetromino.falling = false;
                     
                     console.log(`Player grabbed piece, moving to exit at (${player.claw.targetX}, ${player.claw.targetY})`);
                     break;
