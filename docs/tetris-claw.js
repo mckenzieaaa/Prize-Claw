@@ -398,7 +398,11 @@ class PauseScene extends Phaser.Scene {
         restartBtn.on('pointerdown', () => {
             this.scene.stop();
             this.scene.stop(this.callingScene);
-            this.scene.start('GameScene', { mode: this.gameMode });
+            if (this.callingScene === 'VSGameScene') {
+                this.scene.start('VSGameScene');
+            } else {
+                this.scene.start('GameScene', { mode: this.gameMode });
+            }
         });
 
         // Main menu button
@@ -422,6 +426,534 @@ class PauseScene extends Phaser.Scene {
     }
 }
 
+// VS Game Scene (2 Player Mode)
+class VSGameScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'VSGameScene' });
+        this.BLOCK_SIZE = 40;
+        this.GRID_WIDTH = 8;
+        this.GRID_HEIGHT = 14;
+        this.DANGER_LINE = 3;
+    }
+    
+    init(data) {
+        console.log('Starting VS Mode');
+    }
+
+    preload() {
+        this.createBlockTextures();
+    }
+
+    createBlockTextures() {
+        Object.entries(TETROMINO_SHAPES).forEach(([key, data]) => {
+            const graphics = this.add.graphics();
+            const size = this.BLOCK_SIZE;
+            
+            const color = Phaser.Display.Color.ValueToColor(data.color);
+            graphics.fillGradientStyle(
+                color.lighten(30).color,
+                color.lighten(20).color,
+                color.darken(5).color,
+                color.darken(15).color,
+                0.95
+            );
+            graphics.fillRoundedRect(2, 2, size-4, size-4, 8);
+            
+            graphics.fillStyle(0xFFFFFF, 0.2);
+            graphics.fillRoundedRect(4, 4, size-12, 8, 4);
+            
+            graphics.generateTexture(`block_${key}`, size, size);
+            graphics.destroy();
+        });
+    }
+
+    create() {
+        // Initialize player 1 (left side)
+        this.player1 = this.initPlayer(1, 0);
+        
+        // Initialize player 2 (right side)
+        this.player2 = this.initPlayer(2, 350);
+        
+        // Center divider
+        const divider = this.add.rectangle(350, 400, 4, 800, 0x5E72E4, 0.8);
+        divider.setDepth(199);
+        
+        // Title
+        this.add.text(175, 30, 'PLAYER 1', {
+            fontSize: '20px',
+            color: '#4A90E2',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(200);
+        
+        this.add.text(525, 30, 'PLAYER 2', {
+            fontSize: '20px',
+            color: '#E24A90',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(200);
+        
+        // Setup controls
+        this.setupControls();
+        
+        // ESC to pause
+        this.input.keyboard.on('keydown-ESC', () => {
+            this.showPauseMenu();
+        });
+    }
+    
+    initPlayer(playerNum, offsetX) {
+        const player = {
+            offsetX: offsetX,
+            score: 0,
+            gameOver: false,
+            tetrominoes: [],
+            claw: null,
+            clawState: 'idle',
+            grabbedPiece: null,
+            spawnTimer: 0,
+            spawnInterval: 5000,
+            gameTime: 0,
+            grid: Array(this.GRID_HEIGHT).fill(null).map(() => Array(this.GRID_WIDTH).fill(null))
+        };
+        
+        // Create grid lines
+        const gridGraphics = this.add.graphics();
+        gridGraphics.lineStyle(1, 0x333344, 0.3);
+        for (let x = 0; x <= this.GRID_WIDTH; x++) {
+            gridGraphics.lineBetween(
+                offsetX + x * this.BLOCK_SIZE,
+                0,
+                offsetX + x * this.BLOCK_SIZE,
+                this.GRID_HEIGHT * this.BLOCK_SIZE
+            );
+        }
+        for (let y = 0; y <= this.GRID_HEIGHT; y++) {
+            gridGraphics.lineBetween(
+                offsetX,
+                y * this.BLOCK_SIZE,
+                offsetX + this.GRID_WIDTH * this.BLOCK_SIZE,
+                y * this.BLOCK_SIZE
+            );
+        }
+        gridGraphics.setDepth(0);
+        
+        // Danger line
+        const dangerLine = this.add.rectangle(
+            offsetX + (this.GRID_WIDTH * this.BLOCK_SIZE) / 2,
+            this.DANGER_LINE * this.BLOCK_SIZE,
+            this.GRID_WIDTH * this.BLOCK_SIZE,
+            2,
+            0xFF3366,
+            0.6
+        );
+        dangerLine.setDepth(1);
+        
+        // Exit zone
+        player.exitBox = {
+            x: offsetX + this.GRID_WIDTH * this.BLOCK_SIZE - 120,
+            y: this.GRID_HEIGHT * this.BLOCK_SIZE - 80,
+            width: 100,
+            height: 60
+        };
+        
+        const exitZone = this.add.rectangle(
+            player.exitBox.x + player.exitBox.width/2,
+            player.exitBox.y + player.exitBox.height/2,
+            player.exitBox.width,
+            player.exitBox.height,
+            0x32C832,
+            0.3
+        );
+        exitZone.setStrokeStyle(3, 0x32C832, 0.8);
+        exitZone.setDepth(1);
+        
+        this.add.text(
+            player.exitBox.x + player.exitBox.width/2,
+            player.exitBox.y + player.exitBox.height/2,
+            'EXIT',
+            {
+                fontSize: '20px',
+                color: '#32C832',
+                fontStyle: 'bold'
+            }
+        ).setOrigin(0.5).setDepth(2);
+        
+        // Create claw
+        this.createClaw(player);
+        
+        // Create UI
+        this.createPlayerUI(player, playerNum, offsetX);
+        
+        return player;
+    }
+    
+    createClaw(player) {
+        const startX = player.offsetX + this.GRID_WIDTH * this.BLOCK_SIZE - 80;
+        const startY = 40;
+        
+        player.claw = {
+            x: startX,
+            y: startY,
+            targetX: startX,
+            targetY: startY,
+            speed: 5,
+            autoMoving: false
+        };
+        
+        player.ropeGraphics = this.add.graphics();
+        player.ropeGraphics.setDepth(50);
+        
+        const clawBody = this.add.rectangle(startX, startY, 50, 35, 0xDDDDDD);
+        clawBody.setStrokeStyle(3, 0x999999);
+        clawBody.setDepth(51);
+        
+        const leftArm = this.add.triangle(
+            startX - 15, startY + 20,
+            0, 0,
+            -20, 30,
+            -5, 5,
+            0xCCCCCC
+        );
+        leftArm.setStrokeStyle(2, 0x888888);
+        leftArm.setDepth(51);
+        
+        const rightArm = this.add.triangle(
+            startX + 15, startY + 20,
+            0, 0,
+            20, 30,
+            5, 5,
+            0xCCCCCC
+        );
+        rightArm.setStrokeStyle(2, 0x888888);
+        rightArm.setDepth(51);
+        
+        player.clawGraphics = this.add.container(0, 0, [clawBody, leftArm, rightArm]);
+        player.clawGraphics.setDepth(51);
+    }
+    
+    createPlayerUI(player, playerNum, offsetX) {
+        const panelX = offsetX + 30;
+        const scorePanel = this.add.rectangle(panelX, 70, 120, 90, 0x1a1a2e, 0.85);
+        scorePanel.setStrokeStyle(3, playerNum === 1 ? 0x4A90E2 : 0xE24A90, 0.8);
+        scorePanel.setOrigin(0, 0);
+        scorePanel.setDepth(200);
+
+        this.add.text(panelX + 60, 85, 'SCORE', {
+            fontSize: '14px',
+            color: '#8899AA',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(201);
+
+        player.scoreText = this.add.text(panelX + 60, 120, '0', {
+            fontSize: '28px',
+            color: '#FFFFFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(201);
+    }
+    
+    setupControls() {
+        // Player 1: WASD + Space
+        this.player1.keys = {
+            left: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+            right: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D),
+            up: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+            down: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+            grab: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE)
+        };
+        
+        // Player 2: Arrow Keys + Enter
+        this.player2.keys = {
+            left: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT),
+            right: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT),
+            up: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP),
+            down: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN),
+            grab: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)
+        };
+    }
+    
+    update(time, delta) {
+        if (!this.player1.gameOver) {
+            this.updatePlayer(this.player1, delta);
+        }
+        if (!this.player2.gameOver) {
+            this.updatePlayer(this.player2, delta);
+        }
+        
+        // Check if both players lost
+        if (this.player1.gameOver && this.player2.gameOver) {
+            this.endGame();
+        }
+    }
+    
+    updatePlayer(player, delta) {
+        player.gameTime += delta;
+        player.spawnTimer += delta;
+        
+        // Spawn tetromino
+        if (player.spawnTimer >= player.spawnInterval) {
+            this.spawnTetromino(player);
+            player.spawnTimer = 0;
+        }
+        
+        // Update tetrominoes
+        player.tetrominoes.forEach(tetromino => {
+            if (tetromino.falling) {
+                tetromino.container.y += 0.5;
+                
+                tetromino.blocks.forEach(blockData => {
+                    const worldY = tetromino.container.y + blockData[1] * this.BLOCK_SIZE;
+                    const gridY = Math.floor(worldY / this.BLOCK_SIZE);
+                    const worldX = tetromino.container.x + blockData[0] * this.BLOCK_SIZE;
+                    const gridX = Math.floor((worldX - player.offsetX) / this.BLOCK_SIZE);
+                    
+                    if (gridY >= this.GRID_HEIGHT - 1 || 
+                        (gridY >= 0 && gridY < this.GRID_HEIGHT && 
+                         gridX >= 0 && gridX < this.GRID_WIDTH && 
+                         player.grid[gridY + 1] && player.grid[gridY + 1][gridX])) {
+                        this.landTetromino(player, tetromino);
+                    }
+                });
+            }
+        });
+        
+        // Update claw
+        this.updateClaw(player);
+    }
+    
+    spawnTetromino(player) {
+        const shapes = Object.keys(TETROMINO_SHAPES);
+        const randomShape = shapes[Math.floor(Math.random() * shapes.length)];
+        const shapeData = TETROMINO_SHAPES[randomShape];
+        
+        const spawnX = player.offsetX + Math.random() * (this.GRID_WIDTH - 2) * this.BLOCK_SIZE;
+        
+        const container = this.add.container(spawnX, -this.BLOCK_SIZE * 2);
+        container.setDepth(10);
+        
+        const blocks = [];
+        shapeData.shape.forEach(([x, y]) => {
+            const block = this.add.image(
+                x * this.BLOCK_SIZE + this.BLOCK_SIZE/2,
+                y * this.BLOCK_SIZE + this.BLOCK_SIZE/2,
+                `block_${randomShape}`
+            );
+            container.add(block);
+            blocks.push([x, y]);
+        });
+        
+        player.tetrominoes.push({
+            container: container,
+            blocks: blocks,
+            shape: randomShape,
+            falling: true,
+            gridPositions: []
+        });
+    }
+    
+    landTetromino(player, tetromino) {
+        tetromino.falling = false;
+        
+        tetromino.blocks.forEach(blockData => {
+            const worldX = tetromino.container.x + blockData[0] * this.BLOCK_SIZE;
+            const worldY = tetromino.container.y + blockData[1] * this.BLOCK_SIZE;
+            const gridX = Math.floor((worldX - player.offsetX) / this.BLOCK_SIZE);
+            const gridY = Math.floor(worldY / this.BLOCK_SIZE);
+            
+            if (gridY >= 0 && gridY < this.GRID_HEIGHT && 
+                gridX >= 0 && gridX < this.GRID_WIDTH) {
+                player.grid[gridY][gridX] = true;
+                tetromino.gridPositions.push([gridX, gridY]);
+            }
+        });
+        
+        this.checkGameOver(player);
+    }
+    
+    updateClaw(player) {
+        if (player.clawState === 'idle' && !player.claw.autoMoving) {
+            // Manual control
+            const keys = player.keys;
+            if (keys.left.isDown) {
+                player.claw.targetX -= 3.75;
+            }
+            if (keys.right.isDown) {
+                player.claw.targetX += 3.75;
+            }
+            if (keys.up.isDown) {
+                player.claw.targetY -= 3.75;
+            }
+            if (keys.down.isDown) {
+                player.claw.targetY += 3.75;
+            }
+            
+            player.claw.targetX = Phaser.Math.Clamp(
+                player.claw.targetX,
+                player.offsetX + 25,
+                player.offsetX + this.GRID_WIDTH * this.BLOCK_SIZE - 25
+            );
+            player.claw.targetY = Phaser.Math.Clamp(
+                player.claw.targetY,
+                40,
+                this.GRID_HEIGHT * this.BLOCK_SIZE - 40
+            );
+            
+            if (Phaser.Input.Keyboard.JustDown(keys.grab)) {
+                this.grabPiece(player);
+            }
+        }
+        
+        // Move claw towards target
+        const dx = player.claw.targetX - player.claw.x;
+        const dy = player.claw.targetY - player.claw.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance > 1) {
+            player.claw.x += (dx / distance) * player.claw.speed;
+            player.claw.y += (dy / distance) * player.claw.speed;
+        } else {
+            player.claw.x = player.claw.targetX;
+            player.claw.y = player.claw.targetY;
+            
+            if (player.claw.autoMoving && player.clawState === 'moving_to_exit') {
+                this.deliverPiece(player);
+                player.claw.autoMoving = false;
+                player.clawState = 'idle';
+            }
+        }
+        
+        // Update graphics
+        player.clawGraphics.setPosition(player.claw.x, player.claw.y);
+        
+        player.ropeGraphics.clear();
+        player.ropeGraphics.lineStyle(3, 0x666666, 0.8);
+        player.ropeGraphics.lineBetween(player.claw.x, 0, player.claw.x, player.claw.y - 20);
+        
+        if (player.grabbedPiece) {
+            player.grabbedPiece.container.setPosition(player.claw.x, player.claw.y + 40);
+        }
+    }
+    
+    grabPiece(player) {
+        for (let tetromino of player.tetrominoes) {
+            if (!tetromino.falling) {
+                const bounds = tetromino.container.getBounds();
+                if (Phaser.Geom.Rectangle.Contains(bounds, player.claw.x, player.claw.y)) {
+                    player.grabbedPiece = tetromino;
+                    player.clawState = 'moving_to_exit';
+                    player.claw.autoMoving = true;
+                    
+                    player.claw.targetX = player.exitBox.x + player.exitBox.width / 2;
+                    player.claw.targetY = player.exitBox.y - 60;
+                    player.claw.speed = 5;
+                    
+                    tetromino.gridPositions.forEach(([x, y]) => {
+                        if (y >= 0 && y < this.GRID_HEIGHT && x >= 0 && x < this.GRID_WIDTH) {
+                            player.grid[y][x] = null;
+                        }
+                    });
+                    
+                    break;
+                }
+            }
+        }
+    }
+    
+    deliverPiece(player) {
+        if (!player.grabbedPiece) return;
+        
+        player.grabbedPiece.container.destroy();
+        player.tetrominoes = player.tetrominoes.filter(t => t !== player.grabbedPiece);
+        
+        player.score += 100;
+        player.scoreText.setText(player.score.toString());
+        
+        player.grabbedPiece = null;
+    }
+    
+    checkGameOver(player) {
+        for (let x = 0; x < this.GRID_WIDTH; x++) {
+            for (let y = 0; y < this.DANGER_LINE; y++) {
+                if (player.grid[y][x]) {
+                    player.gameOver = true;
+                    return;
+                }
+            }
+        }
+    }
+    
+    endGame() {
+        const winner = this.player1.score > this.player2.score ? 1 : 
+                      this.player2.score > this.player1.score ? 2 : 0;
+        
+        const overlay = this.add.rectangle(350, 400, 700, 800, 0x000000, 0.85);
+        overlay.setDepth(400);
+        
+        const panel = this.add.rectangle(350, 400, 500, 350, 0x1a1a2e, 0.98);
+        panel.setStrokeStyle(4, winner === 1 ? 0x4A90E2 : winner === 2 ? 0xE24A90 : 0x5E72E4);
+        panel.setDepth(401);
+        
+        const title = this.add.text(350, 280, 
+            winner === 0 ? 'DRAW!' : `PLAYER ${winner} WINS!`, {
+            fontSize: '42px',
+            color: winner === 1 ? '#4A90E2' : winner === 2 ? '#E24A90' : '#FFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        
+        this.add.text(350, 350, `Player 1: ${this.player1.score}`, {
+            fontSize: '24px',
+            color: '#4A90E2',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        
+        this.add.text(350, 390, `Player 2: ${this.player2.score}`, {
+            fontSize: '24px',
+            color: '#E24A90',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        
+        const restartBtn = this.add.rectangle(350, 480, 200, 50, 0xF0A000, 0.8);
+        restartBtn.setStrokeStyle(2, 0xFFB820);
+        restartBtn.setInteractive({ useHandCursor: true });
+        restartBtn.setDepth(402);
+        
+        const restartText = this.add.text(350, 480, 'PLAY AGAIN', {
+            fontSize: '20px',
+            color: '#FFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(403);
+        
+        restartBtn.on('pointerover', () => restartBtn.setFillStyle(0xFFB820, 0.9));
+        restartBtn.on('pointerout', () => restartBtn.setFillStyle(0xF0A000, 0.8));
+        restartBtn.on('pointerdown', () => {
+            this.scene.restart();
+        });
+        
+        const menuBtn = this.add.rectangle(350, 550, 200, 50, 0x5E72E4, 0.8);
+        menuBtn.setStrokeStyle(2, 0x7E92FF);
+        menuBtn.setInteractive({ useHandCursor: true });
+        menuBtn.setDepth(402);
+        
+        const menuText = this.add.text(350, 550, 'MAIN MENU', {
+            fontSize: '20px',
+            color: '#FFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(403);
+        
+        menuBtn.on('pointerover', () => menuBtn.setFillStyle(0x7E92FF, 0.9));
+        menuBtn.on('pointerout', () => menuBtn.setFillStyle(0x5E72E4, 0.8));
+        menuBtn.on('pointerdown', () => {
+            this.scene.start('ModeSelectScene');
+        });
+    }
+    
+    showPauseMenu() {
+        this.scene.pause();
+        this.scene.launch('PauseScene', { 
+            scene: 'VSGameScene',
+            mode: 'versus'
+        });
+    }
+}
+
 // Main Game Scene
 class GameScene extends Phaser.Scene {
     constructor() {
@@ -437,13 +969,9 @@ class GameScene extends Phaser.Scene {
         this.gameMode = data.mode || 'endless';  // default to endless
         console.log('Starting game in mode:', this.gameMode);
         
-        // VS Mode not yet implemented
+        // VS Mode uses separate scene
         if (this.gameMode === 'versus') {
-            // Show coming soon message and return to mode select
-            this.scene.start('MenuScene');
-            setTimeout(() => {
-                alert('VS Mode is coming soon! This feature is under development.\n\nVS Mode will feature:\n• Split screen for 2 players\n• Dual control systems\n• Competitive scoring\n• Head-to-head gameplay');
-            }, 100);
+            this.scene.start('VSGameScene');
             return;
         }
     }
@@ -1846,7 +2374,7 @@ const config = {
     width: 700,
     height: 800,
     backgroundColor: '#0a0a0f',
-    scene: [MenuScene, ModeSelectScene, PauseScene, GameScene],
+    scene: [MenuScene, ModeSelectScene, PauseScene, VSGameScene, GameScene],
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
