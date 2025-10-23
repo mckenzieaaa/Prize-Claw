@@ -337,6 +337,91 @@ class ModeSelectScene extends Phaser.Scene {
     }
 }
 
+// Pause Scene
+class PauseScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'PauseScene' });
+    }
+    
+    init(data) {
+        this.callingScene = data.scene;
+        this.gameMode = data.mode;
+    }
+    
+    create() {
+        // Semi-transparent overlay
+        const overlay = this.add.rectangle(350, 400, 700, 800, 0x000000, 0.8);
+        overlay.setInteractive();
+
+        // Panel
+        const panel = this.add.rectangle(350, 400, 400, 300, 0x1a1a2e, 0.95);
+        panel.setStrokeStyle(3, 0x5E72E4);
+
+        // Title
+        const title = this.add.text(350, 300, 'PAUSED', {
+            fontSize: '42px',
+            color: '#FFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        // Resume button
+        const resumeBtn = this.add.rectangle(350, 380, 200, 50, 0x32C832, 0.8);
+        resumeBtn.setStrokeStyle(2, 0x4AE84A);
+        resumeBtn.setInteractive({ useHandCursor: true });
+
+        const resumeText = this.add.text(350, 380, 'RESUME', {
+            fontSize: '20px',
+            color: '#FFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        resumeBtn.on('pointerover', () => resumeBtn.setFillStyle(0x4AE84A, 0.9));
+        resumeBtn.on('pointerout', () => resumeBtn.setFillStyle(0x32C832, 0.8));
+        resumeBtn.on('pointerdown', () => {
+            this.scene.stop();
+            this.scene.resume(this.callingScene);
+        });
+
+        // Restart button
+        const restartBtn = this.add.rectangle(350, 450, 200, 50, 0xF0A000, 0.8);
+        restartBtn.setStrokeStyle(2, 0xFFB820);
+        restartBtn.setInteractive({ useHandCursor: true });
+
+        const restartText = this.add.text(350, 450, 'RESTART', {
+            fontSize: '20px',
+            color: '#FFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        restartBtn.on('pointerover', () => restartBtn.setFillStyle(0xFFB820, 0.9));
+        restartBtn.on('pointerout', () => restartBtn.setFillStyle(0xF0A000, 0.8));
+        restartBtn.on('pointerdown', () => {
+            this.scene.stop();
+            this.scene.stop(this.callingScene);
+            this.scene.start('GameScene', { mode: this.gameMode });
+        });
+
+        // Main menu button
+        const menuBtn = this.add.rectangle(350, 520, 200, 50, 0xFF3366, 0.8);
+        menuBtn.setStrokeStyle(2, 0xFF5588);
+        menuBtn.setInteractive({ useHandCursor: true });
+
+        const menuText = this.add.text(350, 520, 'MAIN MENU', {
+            fontSize: '20px',
+            color: '#FFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        menuBtn.on('pointerover', () => menuBtn.setFillStyle(0xFF5588, 0.9));
+        menuBtn.on('pointerout', () => menuBtn.setFillStyle(0xFF3366, 0.8));
+        menuBtn.on('pointerdown', () => {
+            this.scene.stop();
+            this.scene.stop(this.callingScene);
+            this.scene.start('ModeSelectScene');
+        });
+    }
+}
+
 // Main Game Scene
 class GameScene extends Phaser.Scene {
     constructor() {
@@ -872,77 +957,9 @@ class GameScene extends Phaser.Scene {
 
     showPauseMenu() {
         this.scene.pause();
-        
-        const overlay = this.add.rectangle(350, 400, 700, 800, 0x000000, 0.8);
-        overlay.setDepth(300);
-        overlay.setInteractive();
-
-        const panel = this.add.rectangle(350, 400, 400, 300, 0x1a1a2e, 0.95);
-        panel.setStrokeStyle(3, 0x5E72E4);
-        panel.setDepth(301);
-
-        const title = this.add.text(350, 300, 'PAUSED', {
-            fontSize: '42px',
-            color: '#FFF',
-            fontStyle: 'bold'
-        }).setOrigin(0.5).setDepth(302);
-
-        // Resume button
-        const resumeBtn = this.add.rectangle(350, 380, 200, 50, 0x32C832, 0.8);
-        resumeBtn.setStrokeStyle(2, 0x4AE84A);
-        resumeBtn.setInteractive();
-        resumeBtn.setDepth(302);
-
-        const resumeText = this.add.text(350, 380, 'RESUME', {
-            fontSize: '20px',
-            color: '#FFF',
-            fontStyle: 'bold'
-        }).setOrigin(0.5).setDepth(303);
-
-        resumeBtn.on('pointerdown', () => {
-            overlay.destroy();
-            panel.destroy();
-            title.destroy();
-            resumeBtn.destroy();
-            resumeText.destroy();
-            restartBtn.destroy();
-            restartText.destroy();
-            menuBtn.destroy();
-            menuText.destroy();
-            this.scene.resume();
-        });
-
-        // Restart button
-        const restartBtn = this.add.rectangle(350, 450, 200, 50, 0xF0A000, 0.8);
-        restartBtn.setStrokeStyle(2, 0xFFB820);
-        restartBtn.setInteractive();
-        restartBtn.setDepth(302);
-
-        const restartText = this.add.text(350, 450, 'RESTART', {
-            fontSize: '20px',
-            color: '#FFF',
-            fontStyle: 'bold'
-        }).setOrigin(0.5).setDepth(303);
-
-        restartBtn.on('pointerdown', () => {
-            this.scene.restart();
-        });
-
-        // Main menu button
-        const menuBtn = this.add.rectangle(350, 520, 200, 50, 0xFF3366, 0.8);
-        menuBtn.setStrokeStyle(2, 0xFF5588);
-        menuBtn.setInteractive();
-        menuBtn.setDepth(302);
-
-        const menuText = this.add.text(350, 520, 'MAIN MENU', {
-            fontSize: '20px',
-            color: '#FFF',
-            fontStyle: 'bold'
-        }).setOrigin(0.5).setDepth(303);
-
-        menuBtn.on('pointerdown', () => {
-            this.scene.stop();
-            this.scene.start('MenuScene');
+        this.scene.launch('PauseScene', { 
+            scene: 'GameScene',
+            mode: this.gameMode 
         });
     }
 
@@ -1829,7 +1846,7 @@ const config = {
     width: 700,
     height: 800,
     backgroundColor: '#0a0a0f',
-    scene: [MenuScene, ModeSelectScene, GameScene],
+    scene: [MenuScene, ModeSelectScene, PauseScene, GameScene],
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
