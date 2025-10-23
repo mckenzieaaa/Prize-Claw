@@ -1000,11 +1000,12 @@ class GameScene extends Phaser.Scene {
     
     init(data) {
         // Get game mode from scene data
-        this.gameMode = data.mode || 'endless';  // default to endless
+        this.gameMode = (data && data.mode) || 'endless';  // default to endless
         console.log('Starting game in mode:', this.gameMode);
         
         // VS Mode uses separate scene
         if (this.gameMode === 'versus') {
+            this.scene.stop();
             this.scene.start('VSGameScene');
             return;
         }
