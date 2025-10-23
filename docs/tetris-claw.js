@@ -858,10 +858,15 @@ class VSGameScene extends Phaser.Scene {
         const dy = player.claw.targetY - player.claw.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
         
-        if (distance > 1) {
+        if (distance > player.claw.speed) {
             player.claw.x += (dx / distance) * player.claw.speed;
             player.claw.y += (dy / distance) * player.claw.speed;
+        } else if (distance > 0.5) {
+            // Slow approach when very close
+            player.claw.x += dx * 0.2;
+            player.claw.y += dy * 0.2;
         } else {
+            // Reached target
             player.claw.x = player.claw.targetX;
             player.claw.y = player.claw.targetY;
             
@@ -869,6 +874,7 @@ class VSGameScene extends Phaser.Scene {
                 this.deliverPiece(player);
                 player.claw.autoMoving = false;
                 player.clawState = 'idle';
+                console.log('Delivered piece, claw is now idle');
             }
         }
         
@@ -937,8 +943,12 @@ class VSGameScene extends Phaser.Scene {
     }
     
     deliverPiece(player) {
-        if (!player.grabbedPiece) return;
+        if (!player.grabbedPiece) {
+            console.log('Warning: deliverPiece called but no grabbed piece');
+            return;
+        }
         
+        console.log('Delivering piece, destroying container');
         player.grabbedPiece.container.destroy();
         player.tetrominoes = player.tetrominoes.filter(t => t !== player.grabbedPiece);
         
@@ -946,6 +956,12 @@ class VSGameScene extends Phaser.Scene {
         player.scoreText.setText(player.score.toString());
         
         player.grabbedPiece = null;
+        
+        // Reset claw target to current position to stop movement
+        player.claw.targetX = player.claw.x;
+        player.claw.targetY = player.claw.y;
+        
+        console.log('Piece delivered, score:', player.score);
     }
     
     
