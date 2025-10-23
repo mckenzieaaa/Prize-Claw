@@ -882,12 +882,26 @@ class VSGameScene extends Phaser.Scene {
         // Don't grab if already holding something
         if (player.grabbedPiece) return;
         
+        console.log(`Trying to grab at (${player.claw.x}, ${player.claw.y})`);
+        console.log(`Player has ${player.tetrominoes.length} tetrominoes`);
+        
         for (let tetromino of player.tetrominoes) {
             if (!tetromino.falling && tetromino !== player.grabbedPiece) {
                 const bounds = tetromino.container.getBounds();
                 
+                console.log(`Checking tetromino at (${tetromino.container.x}, ${tetromino.container.y}), bounds:`, bounds);
+                
+                // Expand the grab area for easier grabbing
+                const grabArea = new Phaser.Geom.Rectangle(
+                    bounds.x - 20,
+                    bounds.y - 20,
+                    bounds.width + 40,
+                    bounds.height + 40
+                );
+                
                 // Check if claw is over the tetromino
-                if (Phaser.Geom.Rectangle.Contains(bounds, player.claw.x, player.claw.y)) {
+                if (Phaser.Geom.Rectangle.Contains(grabArea, player.claw.x, player.claw.y)) {
+                    console.log('GRABBED!');
                     player.grabbedPiece = tetromino;
                     player.clawState = 'moving_to_exit';
                     player.claw.autoMoving = true;
