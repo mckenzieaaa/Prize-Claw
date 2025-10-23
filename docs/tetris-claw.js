@@ -621,38 +621,39 @@ class VSGameScene extends Phaser.Scene {
             targetX: startX,
             targetY: startY,
             speed: 5,
-            autoMoving: false
+            autoMoving: false,
+            body: null,
+            leftArm: null,
+            rightArm: null
         };
         
         player.ropeGraphics = this.add.graphics();
         player.ropeGraphics.setDepth(50);
         
-        const clawBody = this.add.rectangle(startX, startY, 50, 35, 0xDDDDDD);
-        clawBody.setStrokeStyle(3, 0x999999);
-        clawBody.setDepth(51);
+        // Create individual claw parts for this player
+        player.claw.body = this.add.rectangle(startX, startY, 50, 35, 0xDDDDDD);
+        player.claw.body.setStrokeStyle(3, 0x999999);
+        player.claw.body.setDepth(51);
         
-        const leftArm = this.add.triangle(
+        player.claw.leftArm = this.add.triangle(
             startX - 15, startY + 20,
             0, 0,
             -20, 30,
             -5, 5,
             0xCCCCCC
         );
-        leftArm.setStrokeStyle(2, 0x888888);
-        leftArm.setDepth(51);
+        player.claw.leftArm.setStrokeStyle(2, 0x888888);
+        player.claw.leftArm.setDepth(51);
         
-        const rightArm = this.add.triangle(
+        player.claw.rightArm = this.add.triangle(
             startX + 15, startY + 20,
             0, 0,
             20, 30,
             5, 5,
             0xCCCCCC
         );
-        rightArm.setStrokeStyle(2, 0x888888);
-        rightArm.setDepth(51);
-        
-        player.clawGraphics = this.add.container(0, 0, [clawBody, leftArm, rightArm]);
-        player.clawGraphics.setDepth(51);
+        player.claw.rightArm.setStrokeStyle(2, 0x888888);
+        player.claw.rightArm.setDepth(51);
     }
     
     createPlayerUI(player, playerNum, offsetX) {
@@ -861,37 +862,52 @@ class VSGameScene extends Phaser.Scene {
             }
         }
         
-        // Update graphics
-        player.clawGraphics.setPosition(player.claw.x, player.claw.y);
+        // Update claw graphics positions
+        player.claw.body.setPosition(player.claw.x, player.claw.y);
+        player.claw.leftArm.setPosition(player.claw.x - 15, player.claw.y + 20);
+        player.claw.rightArm.setPosition(player.claw.x + 15, player.claw.y + 20);
         
+        // Update rope
         player.ropeGraphics.clear();
         player.ropeGraphics.lineStyle(3, 0x666666, 0.8);
         player.ropeGraphics.lineBetween(player.claw.x, 0, player.claw.x, player.claw.y - 20);
         
+        // Update grabbed piece position
         if (player.grabbedPiece) {
             player.grabbedPiece.container.setPosition(player.claw.x, player.claw.y + 40);
         }
     }
     
     grabPiece(player) {
+        // Don't grab if already holding something
+        if (player.grabbedPiece) return;
+        
         for (let tetromino of player.tetrominoes) {
-            if (!tetromino.falling) {
+            if (!tetromino.falling && tetromino !== player.grabbedPiece) {
                 const bounds = tetromino.container.getBounds();
+                
+                // Check if claw is over the tetromino
                 if (Phaser.Geom.Rectangle.Contains(bounds, player.claw.x, player.claw.y)) {
                     player.grabbedPiece = tetromino;
                     player.clawState = 'moving_to_exit';
                     player.claw.autoMoving = true;
                     
+                    // Set target to EXIT box
                     player.claw.targetX = player.exitBox.x + player.exitBox.width / 2;
                     player.claw.targetY = player.exitBox.y - 60;
                     player.claw.speed = 5;
                     
+                    // Clear grid positions
                     tetromino.gridPositions.forEach(([x, y]) => {
                         if (y >= 0 && y < this.GRID_HEIGHT && x >= 0 && x < this.GRID_WIDTH) {
                             player.grid[y][x] = null;
                         }
                     });
                     
+                    // Mark as grabbed
+                    tetromino.falling = false;
+                    
+                    console.log(`Player grabbed piece, moving to exit at (${player.claw.targetX}, ${player.claw.targetY})`);
                     break;
                 }
             }
