@@ -438,6 +438,10 @@ class VSGameScene extends Phaser.Scene {
     
     init(data) {
         console.log('Starting VS Mode');
+        // 30 seconds time limit
+        this.timeLimit = 30;
+        this.timeRemaining = 30;
+        this.gameEnded = false;
     }
 
     preload() {
@@ -491,6 +495,23 @@ class VSGameScene extends Phaser.Scene {
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(200);
         
+        // Timer display (center top)
+        const timerPanel = this.add.rectangle(350, 90, 180, 70, 0x1a1a2e, 0.9);
+        timerPanel.setStrokeStyle(3, 0xFF6B6B, 0.8);
+        timerPanel.setDepth(200);
+        
+        this.add.text(350, 75, '⏱️ TIME LEFT', {
+            fontSize: '14px',
+            color: '#FF6B6B',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(201);
+        
+        this.timerText = this.add.text(350, 105, '30s', {
+            fontSize: '32px',
+            color: '#FFFFFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(201);
+        
         // Setup controls
         this.setupControls();
         
@@ -510,7 +531,7 @@ class VSGameScene extends Phaser.Scene {
             clawState: 'idle',
             grabbedPiece: null,
             spawnTimer: 0,
-            spawnInterval: 5000,
+            spawnInterval: 2000,  // Faster spawn for VS Mode (2 seconds)
             gameTime: 0,
             grid: Array(this.GRID_HEIGHT).fill(null).map(() => Array(this.GRID_WIDTH).fill(null))
         };
@@ -671,16 +692,32 @@ class VSGameScene extends Phaser.Scene {
     }
     
     update(time, delta) {
-        if (!this.player1.gameOver) {
-            this.updatePlayer(this.player1, delta);
-        }
-        if (!this.player2.gameOver) {
-            this.updatePlayer(this.player2, delta);
+        // Update timer
+        if (!this.gameEnded) {
+            this.timeRemaining -= delta / 1000;
+            
+            // Update timer display
+            const seconds = Math.ceil(this.timeRemaining);
+            this.timerText.setText(`${seconds}s`);
+            
+            // Change color based on time remaining
+            if (this.timeRemaining <= 10) {
+                this.timerText.setColor('#FF3366');
+            } else if (this.timeRemaining <= 20) {
+                this.timerText.setColor('#FFB820');
+            }
+            
+            // Time's up!
+            if (this.timeRemaining <= 0) {
+                this.gameEnded = true;
+                this.endGame();
+                return;
+            }
         }
         
-        // Check if both players lost
-        if (this.player1.gameOver && this.player2.gameOver) {
-            this.endGame();
+        if (!this.gameEnded) {
+            this.updatePlayer(this.player1, delta);
+            this.updatePlayer(this.player2, delta);
         }
     }
     
@@ -765,7 +802,7 @@ class VSGameScene extends Phaser.Scene {
             }
         });
         
-        this.checkGameOver(player);
+        // No game over check in VS Mode - only time limit matters
     }
     
     updateClaw(player) {
@@ -869,16 +906,6 @@ class VSGameScene extends Phaser.Scene {
         player.grabbedPiece = null;
     }
     
-    checkGameOver(player) {
-        for (let x = 0; x < this.GRID_WIDTH; x++) {
-            for (let y = 0; y < this.DANGER_LINE; y++) {
-                if (player.grid[y][x]) {
-                    player.gameOver = true;
-                    return;
-                }
-            }
-        }
-    }
     
     endGame() {
         const winner = this.player1.score > this.player2.score ? 1 : 
@@ -887,35 +914,42 @@ class VSGameScene extends Phaser.Scene {
         const overlay = this.add.rectangle(350, 400, 700, 800, 0x000000, 0.85);
         overlay.setDepth(400);
         
-        const panel = this.add.rectangle(350, 400, 500, 350, 0x1a1a2e, 0.98);
+        const panel = this.add.rectangle(350, 400, 500, 400, 0x1a1a2e, 0.98);
         panel.setStrokeStyle(4, winner === 1 ? 0x4A90E2 : winner === 2 ? 0xE24A90 : 0x5E72E4);
         panel.setDepth(401);
         
-        const title = this.add.text(350, 280, 
+        // Time's up message
+        this.add.text(350, 250, "⏱️ TIME'S UP!", {
+            fontSize: '28px',
+            color: '#FF6B6B',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(402);
+        
+        const title = this.add.text(350, 310, 
             winner === 0 ? 'DRAW!' : `PLAYER ${winner} WINS!`, {
             fontSize: '42px',
             color: winner === 1 ? '#4A90E2' : winner === 2 ? '#E24A90' : '#FFF',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(402);
         
-        this.add.text(350, 350, `Player 1: ${this.player1.score}`, {
+        this.add.text(350, 380, `Player 1: ${this.player1.score}`, {
             fontSize: '24px',
             color: '#4A90E2',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(402);
         
-        this.add.text(350, 390, `Player 2: ${this.player2.score}`, {
+        this.add.text(350, 420, `Player 2: ${this.player2.score}`, {
             fontSize: '24px',
             color: '#E24A90',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(402);
         
-        const restartBtn = this.add.rectangle(350, 480, 200, 50, 0xF0A000, 0.8);
+        const restartBtn = this.add.rectangle(350, 510, 200, 50, 0xF0A000, 0.8);
         restartBtn.setStrokeStyle(2, 0xFFB820);
         restartBtn.setInteractive({ useHandCursor: true });
         restartBtn.setDepth(402);
         
-        const restartText = this.add.text(350, 480, 'PLAY AGAIN', {
+        const restartText = this.add.text(350, 510, 'PLAY AGAIN', {
             fontSize: '20px',
             color: '#FFF',
             fontStyle: 'bold'
@@ -927,12 +961,12 @@ class VSGameScene extends Phaser.Scene {
             this.scene.restart();
         });
         
-        const menuBtn = this.add.rectangle(350, 550, 200, 50, 0x5E72E4, 0.8);
+        const menuBtn = this.add.rectangle(350, 580, 200, 50, 0x5E72E4, 0.8);
         menuBtn.setStrokeStyle(2, 0x7E92FF);
         menuBtn.setInteractive({ useHandCursor: true });
         menuBtn.setDepth(402);
         
-        const menuText = this.add.text(350, 550, 'MAIN MENU', {
+        const menuText = this.add.text(350, 580, 'MAIN MENU', {
             fontSize: '20px',
             color: '#FFF',
             fontStyle: 'bold'
