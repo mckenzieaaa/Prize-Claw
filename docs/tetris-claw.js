@@ -55,12 +55,24 @@ class MenuScene extends Phaser.Scene {
             fontStyle: 'normal'
         }).setOrigin(0.5);
 
-        // Play button
-        this.createButton(WIDTH/2, 380, 'PLAY', () => {
-            this.scene.start('GameScene');
+        // Play button - go to mode select
+        this.createButton(WIDTH/2, 360, 'PLAY', () => {
+            this.scene.start('ModeSelectScene');
         });
+        
+        // How to play button
+        this.createButton(WIDTH/2, 450, 'HOW TO PLAY', () => {
+            this.showInstructions();
+        }, 180, 50, '20px');
 
-        // How to play
+        // Credits
+        this.add.text(WIDTH/2, HEIGHT - 40, 'Choose Your Mode & Enjoy!', {
+            fontSize: '14px',
+            color: '#556677'
+        }).setOrigin(0.5);
+    }
+    
+    showInstructions() {
         const instructions = [
             'Move claw and grab blocks',
             'Auto delivers to EXIT box',
@@ -68,34 +80,51 @@ class MenuScene extends Phaser.Scene {
             'Clear before RED LINE!'
         ];
 
+        const panel = this.add.rectangle(350, 400, 500, 300, 0x0a0a1a, 0.95);
+        panel.setStrokeStyle(3, 0x5e72e4);
+        panel.setDepth(1000);
+        
+        this.add.text(350, 280, 'HOW TO PLAY', {
+            fontSize: '32px',
+            color: '#FFFFFF',
+            fontStyle: 'bold',
+            stroke: '#5e72e4',
+            strokeThickness: 3
+        }).setOrigin(0.5).setDepth(1001);
+
         instructions.forEach((text, i) => {
-            this.add.text(WIDTH/2, 500 + i * 35, text, {
+            this.add.text(350, 340 + i * 35, text, {
                 fontSize: '18px',
                 color: '#AABBCC'
-            }).setOrigin(0.5);
+            }).setOrigin(0.5).setDepth(1001);
         });
-
-        // Credits
-        this.add.text(WIDTH/2, HEIGHT - 40, 'Modern Minimalist Design', {
-            fontSize: '14px',
-            color: '#556677'
-        }).setOrigin(0.5);
+        
+        const closeBtn = this.add.text(350, 500, '[ CLOSE ]', {
+            fontSize: '20px',
+            color: '#FFD700',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(1001).setInteractive();
+        
+        closeBtn.on('pointerdown', () => {
+            panel.destroy();
+            closeBtn.destroy();
+        });
     }
 
-    createButton(x, y, text, callback) {
+    createButton(x, y, text, callback, width = 220, height = 60, fontSize = '28px') {
         const btn = this.add.container(x, y);
         
-        const bg = this.add.rectangle(0, 0, 220, 60, 0x5E72E4, 0.8);
+        const bg = this.add.rectangle(0, 0, width, height, 0x5E72E4, 0.8);
         bg.setStrokeStyle(2, 0x8899FF, 0.8);
         
         const label = this.add.text(0, 0, text, {
-            fontSize: '28px',
+            fontSize: fontSize,
             color: '#FFFFFF',
             fontStyle: 'bold'
         }).setOrigin(0.5);
 
         btn.add([bg, label]);
-        btn.setSize(220, 60);
+        btn.setSize(width, height);
         btn.setInteractive();
 
         btn.on('pointerover', () => {
@@ -140,6 +169,174 @@ class MenuScene extends Phaser.Scene {
     }
 }
 
+// Mode Select Scene
+class ModeSelectScene extends Phaser.Scene {
+    constructor() {
+        super({ key: 'ModeSelectScene' });
+    }
+
+    create() {
+        const WIDTH = 700;
+        const HEIGHT = 800;
+
+        // Background gradient
+        const bg = this.add.graphics();
+        bg.fillGradientStyle(0x0f0f1a, 0x0f0f1a, 0x1a1a2e, 0x1a1a2e, 1);
+        bg.fillRect(0, 0, WIDTH, HEIGHT);
+
+        // Floating particles
+        this.createAmbientParticles(WIDTH, HEIGHT);
+
+        // Title
+        this.add.text(WIDTH/2, 100, 'SELECT MODE', {
+            fontSize: '48px',
+            color: '#FFFFFF',
+            fontStyle: 'bold',
+            stroke: '#5E72E4',
+            strokeThickness: 4
+        }).setOrigin(0.5);
+
+        // Mode buttons (2x2 grid)
+        const modes = [
+            {
+                title: '⏱️ TIME ATTACK',
+                desc: '60 seconds challenge',
+                color: 0xFF6B6B,
+                mode: 'timeAttack',
+                x: 200,
+                y: 250
+            },
+            {
+                title: '♾️ ENDLESS',
+                desc: 'Survive as long as you can',
+                color: 0x4ECDC4,
+                mode: 'endless',
+                x: 500,
+                y: 250
+            },
+            {
+                title: '🎯 LEVELS',
+                desc: 'Complete 10 challenges',
+                color: 0xFFBE0B,
+                mode: 'levels',
+                x: 200,
+                y: 480
+            },
+            {
+                title: '👥 VS MODE',
+                desc: '2 players compete',
+                color: 0xA06BFF,
+                mode: 'versus',
+                x: 500,
+                y: 480
+            }
+        ];
+
+        modes.forEach(mode => {
+            this.createModeButton(mode);
+        });
+
+        // Back button
+        const backBtn = this.add.text(WIDTH/2, HEIGHT - 60, '← BACK TO MENU', {
+            fontSize: '20px',
+            color: '#8899FF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setInteractive();
+
+        backBtn.on('pointerover', () => {
+            backBtn.setColor('#FFFFFF');
+        });
+
+        backBtn.on('pointerout', () => {
+            backBtn.setColor('#8899FF');
+        });
+
+        backBtn.on('pointerdown', () => {
+            this.scene.start('MenuScene');
+        });
+    }
+
+    createModeButton(mode) {
+        const btn = this.add.container(mode.x, mode.y);
+        
+        // Background
+        const bg = this.add.rectangle(0, 0, 220, 160, mode.color, 0.2);
+        bg.setStrokeStyle(3, mode.color, 0.8);
+        
+        // Title
+        const title = this.add.text(0, -35, mode.title, {
+            fontSize: '20px',
+            color: '#FFFFFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        
+        // Description
+        const desc = this.add.text(0, 15, mode.desc, {
+            fontSize: '14px',
+            color: '#AABBCC',
+            align: 'center',
+            wordWrap: { width: 200 }
+        }).setOrigin(0.5);
+        
+        // High score (placeholder)
+        const highScore = localStorage.getItem(`highScore_${mode.mode}`) || 0;
+        const scoreText = this.add.text(0, 55, `Best: ${highScore}`, {
+            fontSize: '16px',
+            color: '#FFD700',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+
+        btn.add([bg, title, desc, scoreText]);
+        btn.setSize(220, 160);
+        btn.setInteractive();
+
+        // Hover effect
+        btn.on('pointerover', () => {
+            this.tweens.add({
+                targets: btn,
+                scaleX: 1.05,
+                scaleY: 1.05,
+                duration: 200
+            });
+            bg.setFillStyle(mode.color, 0.4);
+        });
+
+        btn.on('pointerout', () => {
+            this.tweens.add({
+                targets: btn,
+                scaleX: 1,
+                scaleY: 1,
+                duration: 200
+            });
+            bg.setFillStyle(mode.color, 0.2);
+        });
+
+        btn.on('pointerdown', () => {
+            this.scene.start('GameScene', { mode: mode.mode });
+        });
+
+        return btn;
+    }
+
+    createAmbientParticles(WIDTH, HEIGHT) {
+        for (let i = 0; i < 20; i++) {
+            const x = Phaser.Math.Between(0, WIDTH);
+            const y = Phaser.Math.Between(0, HEIGHT);
+            const size = Phaser.Math.Between(1, 3);
+            const particle = this.add.circle(x, y, size, 0x5E72E4, Phaser.Math.FloatBetween(0.1, 0.3));
+            
+            this.tweens.add({
+                targets: particle,
+                y: y - 200,
+                alpha: 0,
+                duration: Phaser.Math.Between(5000, 10000),
+                repeat: -1,
+                ease: 'Sine.easeInOut'
+            });
+        }
+    }
+}
+
 // Main Game Scene
 class GameScene extends Phaser.Scene {
     constructor() {
@@ -148,6 +345,22 @@ class GameScene extends Phaser.Scene {
         this.GRID_WIDTH = 8;
         this.GRID_HEIGHT = 14;
         this.DANGER_LINE = 3;
+    }
+    
+    init(data) {
+        // Get game mode from scene data
+        this.gameMode = data.mode || 'endless';  // default to endless
+        console.log('Starting game in mode:', this.gameMode);
+        
+        // VS Mode not yet implemented
+        if (this.gameMode === 'versus') {
+            // Show coming soon message and return to mode select
+            this.scene.start('MenuScene');
+            setTimeout(() => {
+                alert('VS Mode is coming soon! This feature is under development.\n\nVS Mode will feature:\n• Split screen for 2 players\n• Dual control systems\n• Competitive scoring\n• Head-to-head gameplay');
+            }, 100);
+            return;
+        }
     }
 
     preload() {
@@ -284,6 +497,13 @@ class GameScene extends Phaser.Scene {
         this.minSpawnInterval = 2000;  // Minimum spawn interval (max difficulty)
         this.gameOver = false;
         this.gameTime = 0;  // Track total game time
+        
+        // Mode-specific variables
+        this.timeLimit = this.gameMode === 'timeAttack' ? 60000 : null;  // 60 seconds for time attack
+        this.timeRemaining = this.timeLimit;
+        this.currentLevel = this.gameMode === 'levels' ? 1 : null;
+        this.levelGoal = this.gameMode === 'levels' ? this.getLevelGoal(1) : null;
+        this.levelProgress = 0;
         
         // Claw machine automation
         this.isAutoMoving = false;
@@ -445,22 +665,68 @@ class GameScene extends Phaser.Scene {
 
     createUI() {
         // Score panel (top left, larger)
-        const scorePanel = this.add.rectangle(30, 30, 220, 110, 0x1a1a2e, 0.85);
+        const scorePanel = this.add.rectangle(30, 30, 140, 110, 0x1a1a2e, 0.85);
         scorePanel.setStrokeStyle(3, 0x5e72e4, 0.8);
         scorePanel.setOrigin(0, 0);
         scorePanel.setDepth(200);
 
-        this.add.text(140, 50, 'SCORE', {
-            fontSize: '18px',
+        this.add.text(100, 50, 'SCORE', {
+            fontSize: '16px',
             color: '#8899AA',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(201);
 
-        this.scoreText = this.add.text(140, 90, '0', {
-            fontSize: '38px',
+        this.scoreText = this.add.text(100, 90, '0', {
+            fontSize: '32px',
             color: '#FFFFFF',
             fontStyle: 'bold'
         }).setOrigin(0.5).setDepth(201);
+        
+        // Mode-specific UI
+        if (this.gameMode === 'timeAttack') {
+            // Time panel
+            const timePanel = this.add.rectangle(30, 160, 140, 80, 0x1a1a2e, 0.85);
+            timePanel.setStrokeStyle(3, 0xFF6B6B, 0.8);
+            timePanel.setOrigin(0, 0);
+            timePanel.setDepth(200);
+            
+            this.add.text(100, 180, 'TIME LEFT', {
+                fontSize: '14px',
+                color: '#FF6B6B',
+                fontStyle: 'bold'
+            }).setOrigin(0.5).setDepth(201);
+            
+            this.timeText = this.add.text(100, 215, '60s', {
+                fontSize: '28px',
+                color: '#FFFFFF',
+                fontStyle: 'bold'
+            }).setOrigin(0.5).setDepth(201);
+        } else if (this.gameMode === 'levels') {
+            // Level panel
+            const levelPanel = this.add.rectangle(30, 160, 140, 110, 0x1a1a2e, 0.85);
+            levelPanel.setStrokeStyle(3, 0xFFBE0B, 0.8);
+            levelPanel.setOrigin(0, 0);
+            levelPanel.setDepth(200);
+            
+            this.add.text(100, 180, `LEVEL ${this.currentLevel}`, {
+                fontSize: '16px',
+                color: '#FFD700',
+                fontStyle: 'bold'
+            }).setOrigin(0.5).setDepth(201);
+            
+            this.levelGoalText = this.add.text(100, 210, this.levelGoal.desc, {
+                fontSize: '12px',
+                color: '#AABBCC',
+                align: 'center',
+                wordWrap: { width: 120 }
+            }).setOrigin(0.5).setDepth(201);
+            
+            this.levelProgressText = this.add.text(100, 245, `0/${this.levelGoal.blocks}`, {
+                fontSize: '24px',
+                color: '#FFFFFF',
+                fontStyle: 'bold'
+            }).setOrigin(0.5).setDepth(201);
+        }
 
         // Instructions (bottom center)
         this.instructionText = this.add.text(350, 740, 'Grab blocks - Claw moves to top-right & drops!  •  PC: WASD+SPACE  Mobile: Drag+DoubleTap', {
@@ -765,15 +1031,42 @@ class GameScene extends Phaser.Scene {
         // Track game time and increase difficulty
         this.gameTime += delta;
         
-        // Decrease spawn interval over time (faster spawning)
-        // Every 30 seconds, reduce interval by 200ms until minimum
-        const secondsElapsed = Math.floor(this.gameTime / 1000);
-        const difficultyLevel = Math.floor(secondsElapsed / 30);
-        this.spawnInterval = Math.max(
-            this.minSpawnInterval,
-            5000 - (difficultyLevel * 200)
-        );
-
+        // Mode-specific updates
+        if (this.gameMode === 'timeAttack') {
+            // Time Attack: countdown timer
+            this.timeRemaining -= delta;
+            if (this.timeText) {
+                const seconds = Math.ceil(this.timeRemaining / 1000);
+                this.timeText.setText(`⏱️ ${seconds}s`);
+                
+                // Change color when time is running out
+                if (seconds <= 10) {
+                    this.timeText.setColor('#FF3366');
+                } else if (seconds <= 30) {
+                    this.timeText.setColor('#FFD700');
+                }
+            }
+            
+            if (this.timeRemaining <= 0) {
+                this.triggerGameOver('Time\'s Up!');
+                return;
+            }
+        } else if (this.gameMode === 'endless') {
+            // Endless: progressive difficulty
+            const secondsElapsed = Math.floor(this.gameTime / 1000);
+            const difficultyLevel = Math.floor(secondsElapsed / 30);
+            this.spawnInterval = Math.max(
+                this.minSpawnInterval,
+                5000 - (difficultyLevel * 200)
+            );
+        } else if (this.gameMode === 'levels') {
+            // Levels: check if goal reached
+            if (this.levelProgress >= this.levelGoal.blocks) {
+                this.completeLevel();
+                return;
+            }
+        }
+        
         // Spawn timer
         this.spawnTimer += delta;
         if (this.spawnTimer >= this.spawnInterval) {
@@ -1106,6 +1399,14 @@ class GameScene extends Phaser.Scene {
         this.score += 100;
         this.scoreText.setText(this.score.toString());
         
+        // Update level progress for Levels mode
+        if (this.gameMode === 'levels') {
+            this.levelProgress++;
+            if (this.levelProgressText) {
+                this.levelProgressText.setText(`${this.levelProgress}/${this.levelGoal.blocks}`);
+            }
+        }
+        
         // Flash exit box
         this.tweens.add({
             targets: this.add.rectangle(
@@ -1336,6 +1637,14 @@ class GameScene extends Phaser.Scene {
         // Score
         this.score += 100;
         this.scoreText.setText(this.score.toString());
+        
+        // Update level progress for Levels mode
+        if (this.gameMode === 'levels') {
+            this.levelProgress++;
+            if (this.levelProgressText) {
+                this.levelProgressText.setText(`${this.levelProgress}/${this.levelGoal.blocks}`);
+            }
+        }
 
         // Remove from array
         this.tetrominoes = this.tetrominoes.filter(t => t !== this.grabbedPiece);
@@ -1349,6 +1658,23 @@ class GameScene extends Phaser.Scene {
             yoyo: true
         });
     }
+    
+    getLevelGoal(level) {
+        // Define goals for each level
+        const goals = [
+            { score: 500, blocks: 5, desc: 'Clear 5 blocks' },
+            { score: 1000, blocks: 10, desc: 'Clear 10 blocks' },
+            { score: 1500, blocks: 15, desc: 'Clear 15 blocks' },
+            { score: 2000, blocks: 20, desc: 'Clear 20 blocks' },
+            { score: 2500, blocks: 25, desc: 'Clear 25 blocks' },
+            { score: 3000, blocks: 30, desc: 'Clear 30 blocks' },
+            { score: 4000, blocks: 35, desc: 'Clear 35 blocks' },
+            { score: 5000, blocks: 40, desc: 'Clear 40 blocks' },
+            { score: 6000, blocks: 45, desc: 'Clear 45 blocks' },
+            { score: 10000, blocks: 50, desc: 'Clear 50 blocks - FINAL!' }
+        ];
+        return goals[level - 1] || goals[goals.length - 1];
+    }
 
     checkGameOver() {
         // Check if any blocks are at or above danger line
@@ -1361,23 +1687,105 @@ class GameScene extends Phaser.Scene {
             }
         }
     }
-
-    triggerGameOver() {
+    
+    completeLevel() {
+        if (this.currentLevel >= 10) {
+            // Completed all levels!
+            this.triggerGameOver('ALL LEVELS COMPLETE!', true);
+            return;
+        }
+        
         this.gameOver = true;
         
         const overlay = this.add.rectangle(350, 400, 700, 800, 0x000000, 0.85);
         overlay.setDepth(300);
 
-        const gameOverText = this.add.text(350, 300, 'GAME OVER', {
-            fontSize: '52px',
-            color: '#FF3366',
-            fontStyle: 'bold'
+        this.add.text(350, 250, `LEVEL ${this.currentLevel} COMPLETE!`, {
+            fontSize: '42px',
+            color: '#FFD700',
+            fontStyle: 'bold',
+            stroke: '#FF9900',
+            strokeThickness: 3
         }).setOrigin(0.5).setDepth(301);
 
-        const scoreText = this.add.text(350, 380, 'Score: ' + this.score, {
+        this.add.text(350, 320, `Score: ${this.score}`, {
+            fontSize: '28px',
+            color: '#FFF'
+        }).setOrigin(0.5).setDepth(301);
+        
+        // Next level button
+        const nextBtn = this.add.text(350, 420, '▶ NEXT LEVEL', {
+            fontSize: '32px',
+            color: '#32C832',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(301).setInteractive();
+
+        nextBtn.on('pointerover', () => {
+            nextBtn.setScale(1.1);
+        });
+
+        nextBtn.on('pointerout', () => {
+            nextBtn.setScale(1);
+        });
+
+        nextBtn.on('pointerdown', () => {
+            this.currentLevel++;
+            this.scene.restart({ mode: 'levels', level: this.currentLevel, score: this.score });
+        });
+        
+        // Menu button
+        const menuBtn = this.add.text(350, 500, '◀ BACK TO MENU', {
+            fontSize: '24px',
+            color: '#8899FF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5).setDepth(301).setInteractive();
+
+        menuBtn.on('pointerdown', () => {
+            this.scene.stop();
+            this.scene.start('ModeSelectScene');
+        });
+    }
+
+    triggerGameOver(message = 'GAME OVER', isVictory = false) {
+        this.gameOver = true;
+        
+        // Save high score
+        const storageKey = `highScore_${this.gameMode}`;
+        const oldHighScore = parseInt(localStorage.getItem(storageKey) || 0);
+        if (this.score > oldHighScore) {
+            localStorage.setItem(storageKey, this.score);
+        }
+        
+        const overlay = this.add.rectangle(350, 400, 700, 800, 0x000000, 0.85);
+        overlay.setDepth(300);
+
+        const gameOverText = this.add.text(350, 280, message, {
+            fontSize: message.length > 15 ? '36px' : '52px',
+            color: isVictory ? '#FFD700' : '#FF3366',
+            fontStyle: 'bold',
+            stroke: isVictory ? '#FF9900' : '#AA0022',
+            strokeThickness: 3,
+            align: 'center'
+        }).setOrigin(0.5).setDepth(301);
+
+        const scoreText = this.add.text(350, 360, 'Score: ' + this.score, {
             fontSize: '32px',
             color: '#FFF'
         }).setOrigin(0.5).setDepth(301);
+        
+        // Show high score if beaten
+        if (this.score > oldHighScore) {
+            this.add.text(350, 400, '🏆 NEW HIGH SCORE! 🏆', {
+                fontSize: '20px',
+                color: '#FFD700',
+                fontStyle: 'bold'
+            }).setOrigin(0.5).setDepth(301);
+        } else if (oldHighScore > 0) {
+            this.add.text(350, 400, `Best: ${oldHighScore}`, {
+                fontSize: '18px',
+                color: '#AABBCC'
+            }).setOrigin(0.5).setDepth(301);
+        }
 
         // Restart button
         const restartBtn = this.add.rectangle(350, 480, 200, 50, 0x32C832, 0.8);
@@ -1392,7 +1800,7 @@ class GameScene extends Phaser.Scene {
         }).setOrigin(0.5).setDepth(303);
 
         restartBtn.on('pointerdown', () => {
-            this.scene.restart();
+            this.scene.restart({ mode: this.gameMode });
         });
 
         // Menu button
@@ -1401,7 +1809,7 @@ class GameScene extends Phaser.Scene {
         menuBtn.setInteractive();
         menuBtn.setDepth(302);
 
-        const menuText = this.add.text(350, 550, 'MAIN MENU', {
+        const menuText = this.add.text(350, 550, 'MODE SELECT', {
             fontSize: '20px',
             color: '#FFF',
             fontStyle: 'bold'
@@ -1409,7 +1817,7 @@ class GameScene extends Phaser.Scene {
 
         menuBtn.on('pointerdown', () => {
             this.scene.stop();
-            this.scene.start('MenuScene');
+            this.scene.start('ModeSelectScene');
         });
     }
 }
@@ -1421,7 +1829,7 @@ const config = {
     width: 700,
     height: 800,
     backgroundColor: '#0a0a0f',
-    scene: [MenuScene, GameScene],
+    scene: [MenuScene, ModeSelectScene, GameScene],
     scale: {
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
