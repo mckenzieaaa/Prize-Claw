@@ -768,6 +768,8 @@ class VSGameScene extends Phaser.Scene {
         
         const spawnX = player.offsetX + Math.random() * (this.GRID_WIDTH - 2) * this.BLOCK_SIZE;
         
+        console.log(`Spawning ${randomShape} at x=${spawnX} (offsetX=${player.offsetX})`);
+        
         const container = this.add.container(spawnX, -this.BLOCK_SIZE * 2);
         container.setDepth(10);
         
@@ -782,17 +784,21 @@ class VSGameScene extends Phaser.Scene {
             blocks.push([x, y]);
         });
         
-        player.tetrominoes.push({
+        const tetromino = {
             container: container,
             blocks: blocks,
             shape: randomShape,
             falling: true,
             gridPositions: []
-        });
+        };
+        
+        player.tetrominoes.push(tetromino);
+        console.log(`Player now has ${player.tetrominoes.length} tetrominoes`);
     }
     
     landTetromino(player, tetromino) {
         tetromino.falling = false;
+        console.log(`Tetromino landed at (${tetromino.container.x}, ${tetromino.container.y})`);
         
         tetromino.blocks.forEach(blockData => {
             const worldX = tetromino.container.x + blockData[0] * this.BLOCK_SIZE;
@@ -807,6 +813,7 @@ class VSGameScene extends Phaser.Scene {
             }
         });
         
+        console.log(`Tetromino has ${tetromino.gridPositions.length} grid positions`);
         // No game over check in VS Mode - only time limit matters
     }
     
