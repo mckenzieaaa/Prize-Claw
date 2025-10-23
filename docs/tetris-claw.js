@@ -84,7 +84,7 @@ class MenuScene extends Phaser.Scene {
         panel.setStrokeStyle(3, 0x5e72e4);
         panel.setDepth(1000);
         
-        this.add.text(350, 280, 'HOW TO PLAY', {
+        const title = this.add.text(350, 280, 'HOW TO PLAY', {
             fontSize: '32px',
             color: '#FFFFFF',
             fontStyle: 'bold',
@@ -92,11 +92,13 @@ class MenuScene extends Phaser.Scene {
             strokeThickness: 3
         }).setOrigin(0.5).setDepth(1001);
 
+        const instructionTexts = [];
         instructions.forEach((text, i) => {
-            this.add.text(350, 340 + i * 35, text, {
+            const instText = this.add.text(350, 340 + i * 35, text, {
                 fontSize: '18px',
                 color: '#AABBCC'
             }).setOrigin(0.5).setDepth(1001);
+            instructionTexts.push(instText);
         });
         
         const closeBtn = this.add.text(350, 500, '[ CLOSE ]', {
@@ -107,6 +109,8 @@ class MenuScene extends Phaser.Scene {
         
         closeBtn.on('pointerdown', () => {
             panel.destroy();
+            title.destroy();
+            instructionTexts.forEach(text => text.destroy());
             closeBtn.destroy();
         });
     }
