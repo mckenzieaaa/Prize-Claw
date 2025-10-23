@@ -3,13 +3,13 @@
 // Drag pieces to EXIT box to score!
 
 const TETROMINO_SHAPES = {
-    I: { shape: [[0,0], [1,0], [2,0], [3,0]], color: 0x00F0F0, name: 'I' },
-    O: { shape: [[0,0], [1,0], [0,1], [1,1]], color: 0xF0F000, name: 'O' },
-    T: { shape: [[1,0], [0,1], [1,1], [2,1]], color: 0xA000F0, name: 'T' },
-    S: { shape: [[1,0], [2,0], [0,1], [1,1]], color: 0x00F000, name: 'S' },
-    Z: { shape: [[0,0], [1,0], [1,1], [2,1]], color: 0xF00000, name: 'Z' },
-    J: { shape: [[0,0], [0,1], [1,1], [2,1]], color: 0x0000F0, name: 'J' },
-    L: { shape: [[2,0], [0,1], [1,1], [2,1]], color: 0xF0A000, name: 'L' }
+    I: { blocks: [[0,0], [1,0], [2,0], [3,0]], color: 0x00F0F0, name: 'I' },
+    O: { blocks: [[0,0], [1,0], [0,1], [1,1]], color: 0xF0F000, name: 'O' },
+    T: { blocks: [[1,0], [0,1], [1,1], [2,1]], color: 0xA000F0, name: 'T' },
+    S: { blocks: [[1,0], [2,0], [0,1], [1,1]], color: 0x00F000, name: 'S' },
+    Z: { blocks: [[0,0], [1,0], [1,1], [2,1]], color: 0xF00000, name: 'Z' },
+    J: { blocks: [[0,0], [0,1], [1,1], [2,1]], color: 0x0000F0, name: 'J' },
+    L: { blocks: [[2,0], [0,1], [1,1], [2,1]], color: 0xF0A000, name: 'L' }
 };
 
 // Main Menu Scene
@@ -767,7 +767,7 @@ class VSGameScene extends Phaser.Scene {
         container.setDepth(10);
         
         const blocks = [];
-        shapeData.shape.forEach(([x, y]) => {
+        shapeData.blocks.forEach(([x, y]) => {
             const block = this.add.image(
                 x * this.BLOCK_SIZE + this.BLOCK_SIZE/2,
                 y * this.BLOCK_SIZE + this.BLOCK_SIZE/2,
