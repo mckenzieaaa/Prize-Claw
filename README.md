@@ -142,6 +142,23 @@ In addition to the local Pygame version, there's also a web version you can play
 
 The web version is built with Phaser 3 and supports mobile touch controls.
 
+### Web Version Screenshots
+
+<p align="center">
+  <img src="python_tetris_claw/screenshots/web_menu.jpg" alt="Web Menu" width="30%" />
+  <img src="python_tetris_claw/screenshots/web_gameplay1.jpg" alt="Web Gameplay 1" width="30%" />
+  <img src="python_tetris_claw/screenshots/web_gameplay2.jpg" alt="Web Gameplay 2" width="30%" />
+</p>
+
+<p align="center">
+  <img src="python_tetris_claw/screenshots/web_gameplay3.jpg" alt="Web Gameplay 3" width="30%" />
+  <img src="python_tetris_claw/screenshots/web_gameover.jpg" alt="Web Game Over" width="30%" />
+</p>
+
+<p align="center">
+  <em>Web Version: Menu • Gameplay Views • Game Over</em>
+</p>
+
 ## 📄 License
 
 This project is open source and available under the MIT License.
