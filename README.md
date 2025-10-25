@@ -10,25 +10,20 @@ A creative Python game combining classic Tetris with claw machine gameplay. Grab
 
 ## 📸 Game Screenshots
 
-### Main Menu
-![Main Menu](python_tetris_claw/screenshots/menu.png)
-*Press SPACE to start your game*
+<p align="center">
+  <img src="python_tetris_claw/screenshots/menu.png" alt="Main Menu" width="30%" />
+  <img src="python_tetris_claw/screenshots/mode_selection.png" alt="Mode Selection" width="30%" />
+  <img src="python_tetris_claw/screenshots/gameplay_start.png" alt="Gameplay Start" width="30%" />
+</p>
 
-### Mode Selection
-![Mode Selection](python_tetris_claw/screenshots/mode_selection.png)
-*Choose from Endless, Time Attack, or Levels mode*
+<p align="center">
+  <img src="python_tetris_claw/screenshots/gameplay_action.png" alt="Gameplay Action" width="30%" />
+  <img src="python_tetris_claw/screenshots/game_over.png" alt="Game Over" width="30%" />
+</p>
 
-### Gameplay - Starting
-![Gameplay Start](python_tetris_claw/screenshots/gameplay_start.png)
-*Control the claw to grab Tetris blocks and deliver them to EXIT*
-
-### Gameplay - In Action
-![Gameplay Action](python_tetris_claw/screenshots/gameplay_action.png)
-*Stack blocks strategically while managing the gravity system*
-
-### Game Over
-![Game Over](python_tetris_claw/screenshots/game_over.png)
-*Final score and high score display*
+<p align="center">
+  <em>Main Menu • Mode Selection • Gameplay Start • Gameplay Action • Game Over</em>
+</p>
 
 ## ✨ Key Features
 
